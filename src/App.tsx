@@ -90,6 +90,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
+  const [redirectError, setRedirectError] = useState<{ type: "404" | "403"; id: string } | null>(null);
 
   // Creation form states
   const [name, setName] = useState("");
@@ -191,13 +193,109 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const generateShortId = (length = 6): string => {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  const parseClientUserAgent = (ua: string) => {
+    let browser = "Other";
+    let device = "Desktop";
+    let os = "Other";
+
+    const lowerUa = ua.toLowerCase();
+
+    if (lowerUa.includes("mobi") || lowerUa.includes("phone") || lowerUa.includes("iphone")) {
+      device = "Mobile";
+    } else if (lowerUa.includes("ipad") || lowerUa.includes("tablet") || (lowerUa.includes("android") && !lowerUa.includes("mobi"))) {
+      device = "Tablet";
+    } else {
+      device = "Desktop";
+    }
+
+    if (lowerUa.includes("firefox")) {
+      browser = "Firefox";
+    } else if (lowerUa.includes("edg/")) {
+      browser = "Edge";
+    } else if (lowerUa.includes("chrome") || lowerUa.includes("chromium")) {
+      browser = "Chrome";
+    } else if (lowerUa.includes("safari") && !lowerUa.includes("chrome")) {
+      browser = "Safari";
+    } else if (lowerUa.includes("opr/") || lowerUa.includes("opera")) {
+      browser = "Opera";
+    }
+
+    if (lowerUa.includes("windows")) {
+      os = "Windows";
+    } else if (lowerUa.includes("macintosh") || lowerUa.includes("mac os")) {
+      os = "macOS";
+    } else if (lowerUa.includes("iphone") || lowerUa.includes("ipad")) {
+      os = "iOS";
+    } else if (lowerUa.includes("android")) {
+      os = "Android";
+    } else if (lowerUa.includes("linux")) {
+      os = "Linux";
+    }
+
+    return { browser, device, os };
+  };
+
   const fetchRedirects = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/redirects");
-      if (!res.ok) throw new Error(`Failed to load active links (Server returned status ${res.status}).`);
-      const data = await res.json();
-      setRedirects(data);
+      let staticLinks: RedirectLink[] = [];
+      try {
+        const res = await fetch("/data/db.json");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.redirects)) {
+            staticLinks = data.redirects;
+          } else if (Array.isArray(data)) {
+            staticLinks = data;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load /data/db.json, using local state only.", e);
+      }
+
+      let localLinks: RedirectLink[] = [];
+      try {
+        const saved = localStorage.getItem("qr-redirects");
+        if (saved) {
+          localLinks = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error("Error reading localStorage redirects:", e);
+      }
+
+      let deletedLinks: string[] = [];
+      try {
+        const savedDeleted = localStorage.getItem("qr-deleted-redirects");
+        if (savedDeleted) {
+          deletedLinks = JSON.parse(savedDeleted);
+        }
+      } catch (e) {
+        console.error("Error reading deleted redirects:", e);
+      }
+
+      const mergedMap = new Map<string, RedirectLink>();
+      staticLinks.forEach(link => {
+        if (!deletedLinks.includes(link.id.toLowerCase())) {
+          mergedMap.set(link.id.toLowerCase(), link);
+        }
+      });
+      localLinks.forEach(link => {
+        if (!deletedLinks.includes(link.id.toLowerCase())) {
+          mergedMap.set(link.id.toLowerCase(), link);
+        }
+      });
+
+      const merged = Array.from(mergedMap.values());
+      setRedirects(merged);
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -209,38 +307,189 @@ export default function App() {
     fetchRedirects();
   }, []);
 
+  const checkRedirect = async () => {
+    const path = window.location.pathname;
+    const match = path.match(/^\/r\/([a-zA-Z0-9\-_]+)$/);
+    if (match) {
+      const shortId = match[1].toLowerCase();
+      setRedirecting(true);
+
+      try {
+        let staticLinks: RedirectLink[] = [];
+        try {
+          const res = await fetch("/data/db.json");
+          if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.redirects)) {
+              staticLinks = data.redirects;
+            } else if (Array.isArray(data)) {
+              staticLinks = data;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not fetch db.json", e);
+        }
+
+        let localLinks: RedirectLink[] = [];
+        try {
+          const saved = localStorage.getItem("qr-redirects");
+          if (saved) {
+            localLinks = JSON.parse(saved);
+          }
+        } catch (e) {
+          console.error("Error loading local links", e);
+        }
+
+        let deletedLinks: string[] = [];
+        try {
+          const savedDeleted = localStorage.getItem("qr-deleted-redirects");
+          if (savedDeleted) {
+            deletedLinks = JSON.parse(savedDeleted);
+          }
+        } catch (e) {
+          console.error("Error loading deleted links", e);
+        }
+
+        if (deletedLinks.includes(shortId)) {
+          setRedirectError({ type: "404", id: match[1] });
+          setRedirecting(false);
+          return;
+        }
+
+        let foundLink = localLinks.find(l => l.id.toLowerCase() === shortId);
+        if (!foundLink) {
+          foundLink = staticLinks.find(l => l.id.toLowerCase() === shortId);
+        }
+
+        if (foundLink) {
+          if (foundLink.status === "paused") {
+            setRedirectError({ type: "403", id: foundLink.name });
+            setRedirecting(false);
+            return;
+          }
+
+          // Record client-side scan analytics locally
+          try {
+            const userAgent = navigator.userAgent;
+            const referrer = document.referrer || "Direct / QR Scanner";
+            const { browser, device, os } = parseClientUserAgent(userAgent);
+            const newScan = {
+              id: `scan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              timestamp: new Date().toISOString(),
+              userAgent,
+              browser,
+              device,
+              os,
+              referrer,
+            };
+
+            const saved = localStorage.getItem("qr-redirects");
+            let currentLocal: RedirectLink[] = saved ? JSON.parse(saved) : [];
+            const idx = currentLocal.findIndex(l => l.id.toLowerCase() === shortId);
+            if (idx !== -1) {
+              currentLocal[idx].scanCount += 1;
+              currentLocal[idx].scans.push(newScan);
+              currentLocal[idx].updatedAt = new Date().toISOString();
+            } else {
+              const cloned = { 
+                ...foundLink, 
+                scanCount: foundLink.scanCount + 1, 
+                scans: [...(foundLink.scans || []), newScan],
+                updatedAt: new Date().toISOString() 
+              };
+              currentLocal.push(cloned);
+            }
+            localStorage.setItem("qr-redirects", JSON.stringify(currentLocal));
+          } catch (e) {
+            console.error("Failed to record analytics scan", e);
+          }
+
+          window.location.replace(foundLink.destinationUrl);
+        } else {
+          setRedirectError({ type: "404", id: match[1] });
+          setRedirecting(false);
+        }
+      } catch (err) {
+        console.error("Error handling redirect", err);
+        setRedirectError({ type: "404", id: match[1] });
+        setRedirecting(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    checkRedirect();
+  }, []);
+
+  const handleExportDB = () => {
+    const dbData = {
+      redirects: redirects.map(link => {
+        const { scansInLast24h, ...linkData } = link as any;
+        return linkData;
+      })
+    };
+    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(dbData, null, 2)
+    )}`;
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", jsonString);
+    downloadAnchor.setAttribute("download", "db.json");
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showToast("Database (db.json) exported! Copy this to public/data/db.json and commit/push to deploy changes.");
+  };
+
   const submitCreate = async () => {
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/redirects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          destinationUrl,
-          id: customSlug ? customSlug.trim() : undefined,
-          tags,
-          qrConfig: createLogoData
-            ? { logoType: "upload", customLogoUrl: createLogoData, logoSize: 24, logoShape: "rounded", logoPadding: 4 }
-            : undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        let errMsg = "Failed to create redirect link.";
-        try {
-          const data = await res.json();
-          errMsg = data.error || errMsg;
-        } catch (_) {
-          errMsg = `Server error (${res.status}): Make sure your backend server is running.`;
+      let finalId = customSlug ? customSlug.trim().toLowerCase() : "";
+      if (finalId) {
+        const slugRegex = /^[a-zA-Z0-9\-_]+$/;
+        if (!slugRegex.test(finalId)) {
+          throw new Error("Custom URL alias can only contain alphanumeric characters, hyphens, and underscores.");
         }
-        throw new Error(errMsg);
+        const exists = redirects.some((r) => r.id.toLowerCase() === finalId);
+        if (exists) {
+          throw new Error("This custom URL alias is already in use. Please select a different one.");
+        }
+      } else {
+        let unique = false;
+        while (!unique) {
+          finalId = generateShortId();
+          const exists = redirects.some((r) => r.id.toLowerCase() === finalId.toLowerCase());
+          if (!exists) unique = true;
+        }
       }
 
-      const data = await res.json();
+      try {
+        new URL(destinationUrl);
+      } catch (e) {
+        throw new Error("Invalid Destination URL. Must include protocol (e.g. https://).");
+      }
 
-      showToast(`Dynamic QR Code "${data.name}" generated successfully!`);
-      // Reset form
+      const now = new Date().toISOString();
+      const newLink: RedirectLink = {
+        id: finalId,
+        name: name.trim(),
+        destinationUrl: destinationUrl.trim(),
+        createdAt: now,
+        updatedAt: now,
+        status: "active",
+        scanCount: 0,
+        scans: [],
+        tags: tags,
+        qrConfig: createLogoData
+          ? { logoType: "upload", customLogoUrl: createLogoData, logoSize: 24, logoShape: "rounded", logoPadding: 4 }
+          : undefined,
+      };
+
+      const saved = localStorage.getItem("qr-redirects");
+      const localLinks: RedirectLink[] = saved ? JSON.parse(saved) : [];
+      localLinks.push(newLink);
+      localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
+
+      showToast(`Dynamic QR Code "${newLink.name}" generated successfully!`);
       setName("");
       setDestinationUrl("");
       setCreateLogoData(null);
@@ -248,7 +497,6 @@ export default function App() {
       setTags([]);
       setTagInput("");
       setActiveTab("dashboard");
-      // Reload list
       fetchRedirects();
     } catch (err: any) {
       showToast(err.message || "Error generating QR code.", "error");
@@ -264,30 +512,31 @@ export default function App() {
       return;
     }
 
-    // If no logo provided yet, prompt user to upload or skip
     if (!createLogoData && !showLogoPrompt) {
       setShowLogoPrompt(true);
       return;
     }
 
-    // proceed
     submitCreate();
   };
 
   const handleStatusToggle = async (link: RedirectLink) => {
     const nextStatus = link.status === "active" ? "paused" : "active";
     try {
-      const res = await fetch(`/api/redirects/${link.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Could not update link configuration.");
+      const saved = localStorage.getItem("qr-redirects");
+      let localLinks: RedirectLink[] = saved ? JSON.parse(saved) : [];
+      
+      const existsIndex = localLinks.findIndex(r => r.id.toLowerCase() === link.id.toLowerCase());
+      if (existsIndex !== -1) {
+        localLinks[existsIndex].status = nextStatus;
+        localLinks[existsIndex].updatedAt = new Date().toISOString();
+      } else {
+        const cloned = { ...link, status: nextStatus, updatedAt: new Date().toISOString() };
+        localLinks.push(cloned);
       }
+      
+      localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
-      // Update state instantly for fluid UX
       setRedirects((prev) =>
         prev.map((r) => (r.id === link.id ? { ...r, status: nextStatus } : r))
       );
@@ -302,29 +551,31 @@ export default function App() {
     if (!editingLink) return;
 
     try {
-      const res = await fetch(`/api/redirects/${editingLink.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editName,
-          destinationUrl: editUrl,
-          tags: editTags,
-          qrConfig: editLogoData ? { logoType: "upload", customLogoUrl: editLogoData, logoSize: 24, logoShape: "rounded", logoPadding: 4 } : undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        let errMsg = "Failed to edit destination link.";
-        try {
-          const data = await res.json();
-          errMsg = data.error || errMsg;
-        } catch (_) {
-          errMsg = `Server error (${res.status}).`;
-        }
-        throw new Error(errMsg);
+      try {
+        new URL(editUrl);
+      } catch (e) {
+        throw new Error("Invalid Destination URL. Must include protocol (e.g. https://).");
       }
 
-      const data = await res.json();
+      const saved = localStorage.getItem("qr-redirects");
+      let localLinks: RedirectLink[] = saved ? JSON.parse(saved) : [];
+      const index = localLinks.findIndex((r) => r.id.toLowerCase() === editingLink.id.toLowerCase());
+
+      const updatedFields = {
+        name: editName.trim(),
+        destinationUrl: editUrl.trim(),
+        tags: editTags,
+        qrConfig: editLogoData ? { logoType: "upload", customLogoUrl: editLogoData, logoSize: 24, logoShape: "rounded", logoPadding: 4 } : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (index !== -1) {
+        localLinks[index] = { ...localLinks[index], ...updatedFields };
+      } else {
+        localLinks.push({ ...editingLink, ...updatedFields });
+      }
+
+      localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
       showToast("Redirect configuration updated successfully!");
       setEditingLink(null);
@@ -338,26 +589,25 @@ export default function App() {
     if (!customizingLink) return;
 
     try {
-      const res = await fetch(`/api/redirects/${customizingLink.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          qrConfig: config,
-        }),
-      });
+      const saved = localStorage.getItem("qr-redirects");
+      let localLinks: RedirectLink[] = saved ? JSON.parse(saved) : [];
+      const index = localLinks.findIndex((r) => r.id.toLowerCase() === customizingLink.id.toLowerCase());
 
-      if (!res.ok) {
-        let errMsg = "Failed to save QR configuration.";
-        try {
-          const data = await res.json();
-          errMsg = data.error || errMsg;
-        } catch (_) {
-          errMsg = `Server error (${res.status}).`;
-        }
-        throw new Error(errMsg);
+      const target = redirects.find(r => r.id.toLowerCase() === customizingLink.id.toLowerCase());
+      if (!target) throw new Error("Redirect link not found");
+
+      const updatedFields = {
+        qrConfig: config,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (index !== -1) {
+        localLinks[index] = { ...localLinks[index], ...updatedFields };
+      } else {
+        localLinks.push({ ...target, ...updatedFields });
       }
 
-      const data = await res.json();
+      localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
       showToast(`QR Code "${customizingLink.name}" styling and picture saved successfully!`);
       setCustomizingLink(null);
@@ -373,11 +623,17 @@ export default function App() {
     }
 
     try {
-      const res = await fetch(`/api/redirects/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("Failed to delete link.");
+      const saved = localStorage.getItem("qr-redirects");
+      let localLinks: RedirectLink[] = saved ? JSON.parse(saved) : [];
+      localLinks = localLinks.filter((r) => r.id.toLowerCase() !== id.toLowerCase());
+      
+      const deletedSaved = localStorage.getItem("qr-deleted-redirects");
+      const deletedIds: string[] = deletedSaved ? JSON.parse(deletedSaved) : [];
+      if (!deletedIds.includes(id.toLowerCase())) {
+        deletedIds.push(id.toLowerCase());
+      }
+      localStorage.setItem("qr-deleted-redirects", JSON.stringify(deletedIds));
+      localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
       showToast(`Dynamic QR Code "${label}" deleted.`);
       fetchRedirects();
@@ -434,6 +690,53 @@ export default function App() {
     if (selectedTagFilter === "all") return true;
     return link.tags && link.tags.includes(selectedTagFilter);
   });
+
+  if (redirecting) {
+    return (
+      <div className="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center font-sans p-6">
+        <div className="max-w-md w-full text-center space-y-6 bg-slate-800/50 p-8 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md">
+          <Loader2 className="w-16 h-16 text-indigo-500 animate-spin mx-auto" />
+          <h1 className="text-2xl font-bold">Redirecting you...</h1>
+          <p className="text-slate-400">Please wait while we route you to the destination.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (redirectError) {
+    if (redirectError.type === "404") {
+      return (
+        <div className="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center font-sans p-6">
+          <div className="max-w-md w-full text-center space-y-6 bg-slate-800/50 p-8 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md">
+            <div className="w-20 h-20 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-full flex items-center justify-center mx-auto text-4xl font-bold animate-pulse">!</div>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-extrabold tracking-tight text-white">QR Code Expired or Invalid</h1>
+              <p className="text-slate-400">The destination or permanent redirect link <code className="bg-slate-950 px-2 py-1 rounded text-sm text-amber-400 font-mono">/r/{redirectError.id}</code> was not found on our server.</p>
+            </div>
+            <div className="pt-4 border-t border-slate-700/50">
+              <p className="text-xs text-slate-500">Powered by Permanent Dynamic QR Codes</p>
+            </div>
+          </div>
+        </div>
+      );
+    } else if (redirectError.type === "403") {
+      return (
+        <div className="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center font-sans p-6">
+          <div className="max-w-md w-full text-center space-y-6 bg-slate-800/50 p-8 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md">
+            <div className="w-20 h-20 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto text-4xl font-bold">⏸</div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold text-white">{redirectError.id}</h1>
+              <p className="text-slate-300 font-medium text-lg">This redirect is currently paused</p>
+              <p className="text-slate-400 text-sm">The creator has temporarily suspended the target destination. Please check back later or scan again.</p>
+            </div>
+            <div className="pt-4 border-t border-slate-700/50">
+              <p className="text-xs text-slate-500">Powered by Permanent Dynamic QR Codes</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
 
   return (
     <div className={`min-h-screen font-sans pb-16 transition-colors duration-300 ${activeTheme.background} ${activeTheme.text}`}>
@@ -571,6 +874,18 @@ export default function App() {
                   title="Reload dashboard database"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={handleExportDB}
+                  className={`p-2.5 border rounded-xl transition flex items-center gap-1.5 ${
+                    activeTheme.isDark
+                      ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
+                      : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
+                  }`}
+                  title="Export Database (db.json) for static build hosting"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden md:inline text-xs font-semibold">Export DB</span>
                 </button>
                 <div className={`flex border rounded-xl p-1 shrink-0 transition-colors ${activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-200/50 border-slate-300/60'}`}>
                   <button

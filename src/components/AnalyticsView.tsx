@@ -40,12 +40,59 @@ export default function AnalyticsView({ redirectId, onBack, activeTheme }: Analy
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/redirects/${redirectId}`);
-      if (!res.ok) {
-        throw new Error("Could not retrieve detailed scan logs.");
+      // 1. Fetch from static db.json
+      let staticLinks: RedirectLinkDetailed[] = [];
+      try {
+        const res = await fetch("/data/db.json");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.redirects)) {
+            staticLinks = data.redirects;
+          } else if (Array.isArray(data)) {
+            staticLinks = data;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch db.json", e);
       }
-      const json = await res.json();
-      setData(json);
+
+      // 2. Load from localStorage
+      let localLinks: RedirectLinkDetailed[] = [];
+      try {
+        const saved = localStorage.getItem("qr-redirects");
+        if (saved) {
+          localLinks = JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error("Error reading localStorage", e);
+      }
+
+      // 3. Check if deleted
+      let deletedLinks: string[] = [];
+      try {
+        const savedDeleted = localStorage.getItem("qr-deleted-redirects");
+        if (savedDeleted) {
+          deletedLinks = JSON.parse(savedDeleted);
+        }
+      } catch (e) {
+        console.error("Error reading deleted", e);
+      }
+
+      if (deletedLinks.includes(redirectId.toLowerCase())) {
+        throw new Error("Redirect link has been deleted.");
+      }
+
+      // 4. Find the link (local storage takes precedence)
+      let foundLink = localLinks.find(l => l.id.toLowerCase() === redirectId.toLowerCase());
+      if (!foundLink) {
+        foundLink = staticLinks.find(l => l.id.toLowerCase() === redirectId.toLowerCase());
+      }
+
+      if (!foundLink) {
+        throw new Error("Redirect link not found.");
+      }
+
+      setData(foundLink);
     } catch (err: any) {
       setError(err.message || "An error occurred fetching analytics.");
     } finally {
