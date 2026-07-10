@@ -195,7 +195,7 @@ export default function App() {
     setLoading(true);
     try {
       const res = await fetch("/api/redirects");
-      if (!res.ok) throw new Error("Failed to load active links.");
+      if (!res.ok) throw new Error(`Failed to load active links (Server returned status ${res.status}).`);
       const data = await res.json();
       setRedirects(data);
     } catch (err: any) {
@@ -226,11 +226,18 @@ export default function App() {
         }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create redirect link.");
+        let errMsg = "Failed to create redirect link.";
+        try {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } catch (_) {
+          errMsg = `Server error (${res.status}): Make sure your backend server is running.`;
+        }
+        throw new Error(errMsg);
       }
+
+      const data = await res.json();
 
       showToast(`Dynamic QR Code "${data.name}" generated successfully!`);
       // Reset form
@@ -306,10 +313,18 @@ export default function App() {
         }),
       });
 
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to edit destination link.");
+        let errMsg = "Failed to edit destination link.";
+        try {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } catch (_) {
+          errMsg = `Server error (${res.status}).`;
+        }
+        throw new Error(errMsg);
       }
+
+      const data = await res.json();
 
       showToast("Redirect configuration updated successfully!");
       setEditingLink(null);
@@ -331,10 +346,18 @@ export default function App() {
         }),
       });
 
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Failed to save QR configuration.");
+        let errMsg = "Failed to save QR configuration.";
+        try {
+          const data = await res.json();
+          errMsg = data.error || errMsg;
+        } catch (_) {
+          errMsg = `Server error (${res.status}).`;
+        }
+        throw new Error(errMsg);
       }
+
+      const data = await res.json();
 
       showToast(`QR Code "${customizingLink.name}" styling and picture saved successfully!`);
       setCustomizingLink(null);
