@@ -92,7 +92,7 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
 export default function App() {
   const [theme, setTheme] = useState<"black" | "white">(() => {
     const savedTheme = localStorage.getItem("qr-studio-theme");
-    return savedTheme === "black" || savedTheme === "white" ? savedTheme : "black";
+    return savedTheme === "black" || savedTheme === "white" ? savedTheme : "white";
   });
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
