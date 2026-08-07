@@ -778,52 +778,54 @@ export default function App() {
         ) : (
           <div className="space-y-8">
             {/* Elegant Display Header */}
-            <header className={`flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-6 transition-colors duration-300 ${activeTheme.cardBorder}`}>
-              <div className="space-y-3">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <img src="/ranbidge-logo.png" alt="RANBIDGE Solutions Private Limited" className="h-16 sm:h-20 md:h-24 w-auto object-contain drop-shadow-md" />
+            <header className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 border-b pb-6 transition-colors duration-300 ${activeTheme.cardBorder}`}>
+              <div className="space-y-2 sm:space-y-3">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <img src="/ranbidge-logo.png" alt="RANBIDGE Solutions Private Limited" className="h-12 xs:h-14 sm:h-18 md:h-24 w-auto object-contain drop-shadow-md shrink-0" />
                   <div>
-                    <h1 className={`text-3xl sm:text-4xl font-display font-bold tracking-tight transition-colors duration-300 ${activeTheme.headingText}`}>
+                    <h1 className={`text-2xl xs:text-3xl sm:text-4xl font-display font-bold tracking-tight transition-colors duration-300 ${activeTheme.headingText}`}>
                       Dynamic <span className={`text-transparent bg-clip-text bg-gradient-to-r transition-all duration-300 ${activeTheme.accentGradient}`}>QR Studio</span>
                     </h1>
                   </div>
                 </div>
-                <p className={`text-sm transition-colors duration-300 ${activeTheme.secondaryText} max-w-xl`}>
+                <p className={`text-xs sm:text-sm transition-colors duration-300 ${activeTheme.secondaryText} max-w-xl`}>
                   Generate permanent QR codes with changeable destination links. Update target URLs instantly without reprinting.
                 </p>
               </div>
 
               {/* Header Actions */}
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={fetchRedirects}
+                    disabled={loading}
+                    className={`p-2.5 border rounded-xl transition disabled:opacity-50 ${
+                      activeTheme.isDark
+                        ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
+                        : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
+                    }`}
+                    title="Reload dashboard database"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  </button>
+                  <button
+                    onClick={handleExportDB}
+                    className={`p-2.5 border rounded-xl transition flex items-center gap-1.5 ${
+                      activeTheme.isDark
+                        ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
+                        : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
+                    }`}
+                    title="Export Database (db.json) for static build hosting"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden xs:inline text-xs font-semibold">Export DB</span>
+                  </button>
+                </div>
 
-                <button
-                  onClick={fetchRedirects}
-                  disabled={loading}
-                  className={`p-2.5 border rounded-xl transition disabled:opacity-50 ${
-                    activeTheme.isDark
-                      ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
-                      : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
-                  }`}
-                  title="Reload dashboard database"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={handleExportDB}
-                  className={`p-2.5 border rounded-xl transition flex items-center gap-1.5 ${
-                    activeTheme.isDark
-                      ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
-                      : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
-                  }`}
-                  title="Export Database (db.json) for static build hosting"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden md:inline text-xs font-semibold">Export DB</span>
-                </button>
-                <div className={`flex border rounded-xl p-1 shrink-0 transition-colors ${activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-200/50 border-slate-300/60'}`}>
+                <div className={`flex border rounded-xl p-1 w-full sm:w-auto shrink-0 transition-colors ${activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-200/50 border-slate-300/60'}`}>
                   <button
                     onClick={() => setActiveTab("dashboard")}
-                    className={`px-4 py-2 text-xs font-semibold rounded-lg transition ${
+                    className={`flex-1 sm:flex-none text-center px-4 py-2 text-xs font-semibold rounded-lg transition ${
                       activeTab === "dashboard" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
                     }`}
                   >
@@ -831,7 +833,7 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => setActiveTab("create")}
-                    className={`px-4 py-2 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${
+                    className={`flex-1 sm:flex-none text-center px-4 py-2 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
                       activeTab === "create" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
                     }`}
                   >
@@ -992,17 +994,17 @@ export default function App() {
                         <div className={`flex rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/45 transition border ${
                           activeTheme.isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-slate-100 border-slate-200'
                         }`}>
-                          <span className={`px-3.5 py-3 text-xs font-mono select-none flex items-center border-r shrink-0 ${
+                          <span className={`px-2.5 sm:px-3.5 py-3 text-xs font-mono select-none flex items-center border-r shrink-0 ${
                             activeTheme.isDark ? 'bg-slate-800 text-slate-400 border-slate-700/60' : 'bg-slate-200/60 text-slate-500 border-slate-300/60'
                           }`}>
-                            {window.location.origin}/r/
+                            <span className="hidden sm:inline">{window.location.origin}</span>/r/
                           </span>
                           <input
                             type="text"
                             value={customSlug}
                             onChange={(e) => setCustomSlug(e.target.value)}
                             placeholder="summer-promo"
-                            className={`w-full bg-transparent px-4 py-3 text-sm focus:outline-none font-mono ${activeTheme.isDark ? 'text-slate-200 placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'}`}
+                            className={`w-full bg-transparent px-3 sm:px-4 py-3 text-sm focus:outline-none font-mono ${activeTheme.isDark ? 'text-slate-200 placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'}`}
                           />
                         </div>
                         <p className={`text-xs transition-colors duration-300 ${activeTheme.secondaryText}`}>Leave blank to generate a short, secure random link (e.g. <code className={`px-1 py-0.5 rounded ${activeTheme.accentBg} ${activeTheme.accentText}`}>gY7f2A</code>).</p>
@@ -1270,26 +1272,26 @@ export default function App() {
                                   <div className={`space-y-2 pt-2 border-t transition-colors duration-300 ${activeTheme.cardBorder}`}>
                                     <div className="space-y-1">
                                       <span className={`text-[10px] uppercase tracking-wider font-semibold transition-colors duration-300 ${activeTheme.secondaryText}`}>Printed QR</span>
-                                      <div className={`flex items-center justify-between p-2 rounded-lg border transition-all duration-300 ${
+                                      <div className={`flex items-center justify-between p-2 rounded-lg border gap-2 transition-all duration-300 ${
                                         activeTheme.isDark 
                                           ? 'bg-slate-950/40 border-slate-800/60 text-slate-300' 
                                           : 'bg-slate-100/50 border-slate-200/50 text-slate-700'
                                       }`}>
-                                        <span className="font-mono text-xs truncate max-w-[140px] sm:max-w-[180px] md:max-w-[150px] lg:max-w-[220px]" title={link.destinationUrl}>
+                                        <span className="font-mono text-xs truncate flex-1 min-w-0" title={link.destinationUrl}>
                                           Encodes destination URL
                                         </span>
-                                        <span className={`text-xs ${activeTheme.secondaryText}`}>Preview below</span>
+                                        <span className={`text-xs shrink-0 ${activeTheme.secondaryText}`}>Preview below</span>
                                       </div>
                                     </div>
 
                                     <div className="space-y-1">
                                       <span className={`text-[10px] uppercase tracking-wider font-semibold transition-colors duration-300 ${activeTheme.secondaryText}`}>Instant target Destination</span>
-                                      <div className={`flex items-center justify-between p-2 rounded-lg border transition-all duration-300 ${
+                                      <div className={`flex items-center justify-between p-2 rounded-lg border gap-2 transition-all duration-300 ${
                                         activeTheme.isDark 
                                           ? 'bg-slate-950/40 border-slate-800/60 text-slate-300' 
                                           : 'bg-slate-100/50 border-slate-200/50 text-slate-700'
                                       }`}>
-                                        <span className="font-mono text-xs truncate max-w-[140px] sm:max-w-[180px] md:max-w-[150px] lg:max-w-[220px]" title={link.destinationUrl}>
+                                        <span className="font-mono text-xs truncate flex-1 min-w-0" title={link.destinationUrl}>
                                           {link.destinationUrl}
                                         </span>
                                         <button
@@ -1300,7 +1302,7 @@ export default function App() {
                                             setEditTags(link.tags || []);
                                             setEditTagInput("");
                                           }}
-                                          className={`p-1 rounded transition-colors ${
+                                          className={`p-1.5 rounded transition-colors shrink-0 ${
                                             activeTheme.isDark ? 'hover:bg-slate-800 text-indigo-400 hover:text-indigo-300' : 'hover:bg-slate-200 text-indigo-600 hover:text-indigo-700'
                                           }`}
                                           title="Instantly Change target URL"
@@ -1328,24 +1330,23 @@ export default function App() {
                                     className="w-full h-full object-contain"
                                     config={link.qrConfig}
                                   />
-                                  {/* hover overlay removed per request */}
                                 </button>
                               </div>
                             </div>
 
                             {/* Cards Action panel */}
-                            <div className={`flex items-center justify-between pt-3 border-t transition-colors duration-300 ${activeTheme.cardBorder}`}>
-                              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                            <div className={`flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-3 pt-3 border-t transition-colors duration-300 ${activeTheme.cardBorder}`}>
+                              <div className="flex items-center justify-between xs:justify-start gap-1.5 text-xs text-slate-400">
                                 <span className={`font-mono font-bold px-2 py-0.5 rounded-md border transition-colors duration-300 ${activeTheme.accentBg} ${activeTheme.accentText} ${activeTheme.accentBorder}`}>
                                   {link.scanCount}
                                 </span>
                                 <span className={`font-medium transition-colors duration-300 ${activeTheme.secondaryText}`}>total scans</span>
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="grid grid-cols-4 sm:flex items-center gap-1.5 sm:gap-2 w-full xs:w-auto">
                                 <button
                                   onClick={() => setCustomizingLink({ id: link.id, name: link.name, destinationUrl: link.destinationUrl })}
-                                  className={`p-2 rounded-xl border transition flex items-center justify-center ${
+                                  className={`p-2.5 rounded-xl border transition flex items-center justify-center min-h-[40px] ${
                                     activeTheme.isDark
                                       ? "bg-slate-900 hover:bg-slate-950 text-slate-300 hover:text-indigo-400 border-slate-700/30"
                                       : "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-indigo-600 border-slate-200"
@@ -1365,7 +1366,7 @@ export default function App() {
                                     a.download = `${link.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-qr.png`;
                                     a.click();
                                   }}
-                                  className={`p-2 rounded-xl border transition flex items-center justify-center ${
+                                  className={`p-2.5 rounded-xl border transition flex items-center justify-center min-h-[40px] ${
                                     activeTheme.isDark
                                       ? "bg-slate-900 hover:bg-slate-950 text-slate-300 hover:text-indigo-400 border-slate-700/30"
                                       : "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-indigo-600 border-slate-200"
@@ -1377,19 +1378,19 @@ export default function App() {
 
                                 <button
                                   onClick={() => setSelectedAnalyticsId(link.id)}
-                                  className={`py-2 px-3.5 rounded-xl border text-xs font-semibold transition flex items-center gap-1.5 ${
+                                  className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 min-h-[40px] ${
                                     activeTheme.isDark
                                       ? "bg-slate-900 hover:bg-slate-950 text-slate-300 hover:text-indigo-400 border-slate-700/30"
                                       : "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-indigo-600 border-slate-200"
                                   }`}
                                 >
                                   <Eye className="w-3.5 h-3.5" />
-                                  Analytics
+                                  <span className="hidden xs:inline sm:inline">Analytics</span>
                                 </button>
 
                                 <button
                                   onClick={() => handleDelete(link.id, link.name)}
-                                  className={`p-2 rounded-xl border transition flex items-center justify-center ${
+                                  className={`p-2.5 rounded-xl border transition flex items-center justify-center min-h-[40px] ${
                                     activeTheme.isDark
                                       ? "bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border-slate-700/30"
                                       : "bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border-slate-200"
@@ -1416,27 +1417,27 @@ export default function App() {
       {/* MODAL 1: Interactive QR Code Styling Customizer */}
       <AnimatePresence>
         {customizingLink && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={`border rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl transition-all duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
+              className={`border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl transition-all duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
             >
-              <div className={`px-6 py-4 border-b flex justify-between items-center transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
+              <div className={`px-4 sm:px-6 py-4 border-b flex justify-between items-center sticky top-0 z-10 backdrop-blur-md transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950/90 border-slate-800/80' : 'bg-slate-50/90 border-slate-200'}`}>
                 <div>
-                  <h3 className={`font-display font-bold text-lg transition-colors duration-300 ${activeTheme.headingText}`}>QR Studio Generator</h3>
+                  <h3 className={`font-display font-bold text-base sm:text-lg transition-colors duration-300 ${activeTheme.headingText}`}>QR Studio Generator</h3>
                   <p className={`text-xs transition-colors duration-300 ${activeTheme.secondaryText}`}>Styling parameters for &quot;{customizingLink.name}&quot;</p>
                 </div>
                 <button
                   onClick={() => setCustomizingLink(null)}
-                  className={`p-1 rounded-lg transition ${activeTheme.isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'}`}
+                  className={`p-1.5 rounded-lg transition ${activeTheme.isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'}`}
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <QRCodeCustomizer
                   redirectId={customizingLink.id}
                   redirectUrl={customizingLink.destinationUrl || (redirects.find((r) => r.id === customizingLink.id)?.destinationUrl ?? "")}
@@ -1454,8 +1455,8 @@ export default function App() {
         {/* Modal: Logo Prompt during Create */}
         <AnimatePresence>
           {showLogoPrompt && (
-            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={`w-full max-w-md p-6 rounded-2xl ${activeTheme.cardBg} ${activeTheme.cardBorder}`}>
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={`w-full max-w-md max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-2xl ${activeTheme.cardBg} ${activeTheme.cardBorder}`}>
                 <h3 className={`font-display font-bold text-lg mb-2 ${activeTheme.headingText}`}>Add a center logo?</h3>
                 <p className={`text-sm mb-4 ${activeTheme.secondaryText}`}>You can upload a small PNG/JPG to render at the center of the QR code. This improves branding but must be legible.</p>
 
@@ -1487,14 +1488,14 @@ export default function App() {
       {/* MODAL 2: Instant Destination Modifier */}
       <AnimatePresence>
         {editingLink && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={`border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl transition-all duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
+              className={`border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl transition-all duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
             >
-              <div className={`px-6 py-4 border-b flex justify-between items-center transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
+              <div className={`px-4 sm:px-6 py-4 border-b flex justify-between items-center sticky top-0 z-10 backdrop-blur-md transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950/90 border-slate-800/80' : 'bg-slate-50/90 border-slate-200'}`}>
                 <h3 className={`font-display font-bold text-md transition-colors duration-300 ${activeTheme.headingText}`}>Edit Target Destination</h3>
                 <button
                   onClick={() => setEditingLink(null)}

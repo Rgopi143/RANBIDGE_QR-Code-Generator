@@ -280,7 +280,7 @@ export default function QRCodeCustomizer({
         </div>
 
         {/* RIGHT: Styling Controls */}
-        <div className="md:col-span-7 space-y-5 max-h-[480px] overflow-y-auto pr-2 custom-scrollbar">
+        <div className="md:col-span-7 space-y-5 pr-0 md:pr-1">
           {/* Colors Card */}
           <div className={`p-4 rounded-xl border space-y-4 ${activeTheme.isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200'}`}>
             <div className="flex items-center gap-2">
@@ -289,7 +289,7 @@ export default function QRCodeCustomizer({
             </div>
 
             {/* Presets */}
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 xs:grid-cols-3 gap-1.5">
               {presetColors.map((p) => (
                 <button
                   key={p.name}
@@ -428,7 +428,7 @@ export default function QRCodeCustomizer({
             {logoType === "preset" && (
               <div className="space-y-2">
                 <span className={`text-[11px] font-medium ${activeTheme.secondaryText}`}>Choose Preset Symbol</span>
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-5 xs:grid-cols-7 gap-1.5 sm:gap-2">
                   <button
                     type="button"
                     onClick={() => setPresetLogo("/ranbidge-logo.png")}
