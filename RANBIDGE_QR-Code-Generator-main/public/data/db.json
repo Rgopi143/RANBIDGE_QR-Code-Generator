@@ -1,0 +1,25 @@
+{
+  "redirects": [
+    {
+      "id": "KCyEm7",
+      "name": "RANBIDGE SOLUTIONS PRIVATE LIMITED",
+      "destinationUrl": "https://ranbidge-solutions-private-limited.onrender.com/",
+      "createdAt": "2026-07-09T19:06:30.299Z",
+      "updatedAt": "2026-07-09T19:08:01.566Z",
+      "status": "active",
+      "scanCount": 1,
+      "scans": [
+        {
+          "id": "scan-1783624081566-ahbtv3494",
+          "timestamp": "2026-07-09T19:08:01.566Z",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0",
+          "browser": "Edge",
+          "device": "Desktop",
+          "os": "Windows",
+          "referrer": "Direct / QR Scanner"
+        }
+      ],
+      "tags": []
+    }
+  ]
+}
