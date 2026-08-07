@@ -6,3 +6,4 @@ coverage/
 *.log
 .env*
 !.env.example
+RANBIDGE_QR-Code-Generator-main/
