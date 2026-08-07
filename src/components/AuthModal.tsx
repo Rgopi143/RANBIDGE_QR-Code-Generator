@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Lock, Mail, User, Eye, EyeOff, Sparkles, ArrowRight, QrCode } from "lucide-react";
+import { Lock, Mail, User, Eye, EyeOff, Sparkles, ArrowRight, QrCode, Check } from "lucide-react";
 import { ThemeConfig } from "../types";
 
 interface AuthModalProps {
@@ -25,6 +25,8 @@ export default function AuthModal({
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [successUser, setSuccessUser] = useState<{ name: string; email: string } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -61,8 +63,14 @@ export default function AuthModal({
         name: mode === "signup" ? fullName.trim() : email.split("@")[0] || "Studio User",
         email: email.trim(),
       };
-      onLoginSuccess(user);
-    }, 600);
+      setSuccessUser(user);
+      setIsSuccess(true);
+
+      setTimeout(() => {
+        setIsSuccess(false);
+        onLoginSuccess(user);
+      }, 1600);
+    }, 500);
   };
 
   const handleDemoLogin = () => {
@@ -109,111 +117,178 @@ export default function AuthModal({
             </p>
           </div>
 
-          {/* Form Content */}
+          {/* Form Content or Success Animation */}
           <div className="p-6 sm:p-8 space-y-6">
-            {/* Mode Segmented Controls */}
-            <div className={`grid grid-cols-2 p-1 rounded-xl border ${activeTheme.isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
-              <button
-                type="button"
-                onClick={() => { setMode("login"); setError(null); }}
-                className={`py-2 text-xs font-semibold rounded-lg transition ${
-                  mode === "login" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
-                }`}
+            {isSuccess ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="py-8 flex flex-col items-center justify-center text-center space-y-5"
               >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode("signup"); setError(null); }}
-                className={`py-2 text-xs font-semibold rounded-lg transition ${
-                  mode === "signup" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
-                }`}
-              >
-                Create Account
-              </button>
-            </div>
+                {/* Animated Glowing Success Badge */}
+                <div className="relative">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: [0, 1.25, 1] }}
+                    transition={{ duration: 0.5, ease: "backOut" }}
+                    className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center shadow-xl shadow-emerald-500/30"
+                  >
+                    <motion.div
+                      initial={{ scale: 0, rotate: -45 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ delay: 0.2, duration: 0.4, type: "spring", stiffness: 200 }}
+                    >
+                      <Check className="w-10 h-10 text-emerald-500 stroke-[3]" />
+                    </motion.div>
+                  </motion.div>
 
-            {error && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl flex items-center gap-2">
-                <span>⚠️ {error}</span>
+                  <motion.div
+                    animate={{ y: [-4, 4, -4], opacity: [0.6, 1, 0.6] }}
+                    transition={{ repeat: Infinity, duration: 2 }}
+                    className="absolute -top-2 -right-2"
+                  >
+                    <Sparkles className="w-6 h-6 text-amber-400" />
+                  </motion.div>
+                </div>
+
+                <div className="space-y-2 px-2">
+                  <motion.h3
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className={`text-2xl font-display font-bold ${activeTheme.headingText}`}
+                  >
+                    {mode === "signup" ? "Account Created!" : "Welcome Back!"}
+                  </motion.h3>
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className={`text-xs max-w-xs mx-auto ${activeTheme.secondaryText}`}
+                  >
+                    {mode === "signup"
+                      ? `Welcome to Ranbidge QR Studio, ${successUser?.name || "Member"}! Opening dashboard...`
+                      : `Authenticated as ${successUser?.name || "Member"}. Launching dashboard...`}
+                  </motion.p>
+                </div>
+
+                {/* Animated Loading Bar */}
+                <div className="w-52 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mt-2">
+                  <motion.div
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 1.4, ease: "easeInOut" }}
+                    className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500"
+                  />
+                </div>
               </motion.div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {mode === "signup" && (
-                <div className="space-y-1.5">
-                  <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Full Name</label>
-                  <div className="relative">
-                    <User className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
-                    <input
-                      type="text"
-                      required
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Jane Doe"
-                      className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Email Address</label>
-                <div className="relative">
-                  <Mail className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
-                    className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Password</label>
-                  {mode === "login" && (
-                    <button type="button" className="text-[11px] text-indigo-400 hover:underline">Forgot password?</button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Lock className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className={`w-full rounded-xl pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
-                  />
+            ) : (
+              <>
+                {/* Mode Segmented Controls */}
+                <div className={`grid grid-cols-2 p-1 rounded-xl border ${activeTheme.isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute right-3.5 top-3 transition-colors ${activeTheme.secondaryText} hover:text-white`}
+                    onClick={() => { setMode("login"); setError(null); }}
+                    className={`py-2 text-xs font-semibold rounded-lg transition ${
+                      mode === "login" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
+                    }`}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode("signup"); setError(null); }}
+                    className={`py-2 text-xs font-semibold rounded-lg transition ${
+                      mode === "signup" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
+                    }`}
+                  >
+                    Create Account
                   </button>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>
-                    {mode === "login" ? "Sign In to Studio" : "Create Studio Account"}
-                    <ArrowRight className="w-4 h-4" />
-                  </>
+                {error && (
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl flex items-center gap-2">
+                    <span>⚠️ {error}</span>
+                  </motion.div>
                 )}
-              </button>
-            </form>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {mode === "signup" && (
+                    <div className="space-y-1.5">
+                      <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Full Name</label>
+                      <div className="relative">
+                        <User className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
+                        <input
+                          type="text"
+                          required
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          placeholder="Jane Doe"
+                          className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Email Address</label>
+                    <div className="relative">
+                      <Mail className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
+                      <input
+                        type="email"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="name@company.com"
+                        className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Password</label>
+                      {mode === "login" && (
+                        <button type="button" className="text-[11px] text-indigo-400 hover:underline">Forgot password?</button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Lock className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className={`w-full rounded-xl pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className={`absolute right-3.5 top-3 transition-colors ${activeTheme.secondaryText} hover:text-white`}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center gap-2"
+                  >
+                    {loading ? (
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        {mode === "login" ? "Sign In to Studio" : "Create Studio Account"}
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </motion.div>
       </div>
