@@ -79,9 +79,12 @@ export default function QRPreview({ url, className = "", config, canvasId }: QRP
         }
         ctx.fill();
 
-        if (logoType === "upload" && customLogoUrl) {
+        const isImagePreset = logoType === "preset" && (presetLogo.startsWith("/") || presetLogo.startsWith("http") || presetLogo.startsWith("data:"));
+        const imgSrc = logoType === "upload" ? customLogoUrl : isImagePreset ? presetLogo : null;
+
+        if (imgSrc) {
           const img = new Image();
-          img.src = customLogoUrl;
+          img.src = imgSrc;
           img.onload = () => {
             ctx.save();
             ctx.beginPath();

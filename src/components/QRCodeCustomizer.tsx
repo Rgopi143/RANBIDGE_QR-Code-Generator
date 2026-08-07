@@ -144,9 +144,12 @@ export default function QRCodeCustomizer({
     ctx.fill();
 
     // Draw Content
-    if (logoType === "upload" && customLogoUrl) {
+    const isImagePreset = logoType === "preset" && (presetLogo.startsWith("/") || presetLogo.startsWith("http") || presetLogo.startsWith("data:"));
+    const imgSrc = logoType === "upload" ? customLogoUrl : isImagePreset ? presetLogo : null;
+
+    if (imgSrc) {
       const img = new Image();
-      img.src = customLogoUrl;
+      img.src = imgSrc;
       img.onload = () => {
         ctx.save();
         ctx.beginPath();
@@ -277,7 +280,7 @@ export default function QRCodeCustomizer({
         </div>
 
         {/* RIGHT: Styling Controls */}
-        <div className="md:col-span-7 space-y-5 max-h-[480px] overflow-y-auto pr-2 custom-scrollbar">
+        <div className="md:col-span-7 space-y-5 pr-0 md:pr-1">
           {/* Colors Card */}
           <div className={`p-4 rounded-xl border space-y-4 ${activeTheme.isDark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200'}`}>
             <div className="flex items-center gap-2">
@@ -286,7 +289,7 @@ export default function QRCodeCustomizer({
             </div>
 
             {/* Presets */}
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 xs:grid-cols-3 gap-1.5">
               {presetColors.map((p) => (
                 <button
                   key={p.name}
@@ -377,6 +380,25 @@ export default function QRCodeCustomizer({
               </span>
             </div>
 
+            {/* Quick RANBIDGE Logo action */}
+            <button
+              type="button"
+              onClick={() => {
+                setLogoType("preset");
+                setPresetLogo("/ranbidge-logo.png");
+              }}
+              className={`w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg border transition ${
+                logoType === "preset" && presetLogo === "/ranbidge-logo.png"
+                  ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                  : activeTheme.isDark
+                    ? "bg-indigo-500/10 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20"
+                    : "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+              }`}
+            >
+              <img src="/ranbidge-logo.png" alt="RANBIDGE Logo" className="h-4 w-auto object-contain" />
+              <span className="text-xs font-semibold">Use Official RANBIDGE Logo</span>
+            </button>
+
             {/* Type tabs */}
             <div className="grid grid-cols-4 gap-1 p-1 rounded-lg bg-slate-950/30">
               {([
@@ -406,7 +428,21 @@ export default function QRCodeCustomizer({
             {logoType === "preset" && (
               <div className="space-y-2">
                 <span className={`text-[11px] font-medium ${activeTheme.secondaryText}`}>Choose Preset Symbol</span>
-                <div className="grid grid-cols-6 gap-2">
+                <div className="grid grid-cols-5 xs:grid-cols-7 gap-1.5 sm:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPresetLogo("/ranbidge-logo.png")}
+                    title="RANBIDGE Logo"
+                    className={`p-1.5 rounded-lg border transition flex items-center justify-center ${
+                      presetLogo === "/ranbidge-logo.png"
+                        ? "bg-indigo-600/20 border-indigo-500"
+                        : activeTheme.isDark
+                          ? "bg-slate-950 border-slate-800 hover:bg-slate-800/40"
+                          : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    <img src="/ranbidge-logo.png" alt="RANBIDGE" className="w-5 h-5 object-contain" />
+                  </button>
                   {presetEmojis.map((emoji) => (
                     <button
                       key={emoji}

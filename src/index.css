@@ -9,5 +9,32 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #0f172a; /* Slate 900 background */
+  background-color: #090d16;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
+
+html {
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Sleek subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { RedirectLink, ThemeConfig } from "./types";
+import { RedirectLink, ThemeConfig, AppNotification } from "./types";
 import { motion, AnimatePresence } from "motion/react";
 import {
   QrCode,
@@ -29,45 +29,61 @@ import {
 import QRCodeCustomizer from "./components/QRCodeCustomizer";
 import AnalyticsView from "./components/AnalyticsView";
 import QRPreview from "./components/QRPreview";
+import LandingPage from "./components/LandingPage";
+import AuthModal from "./components/AuthModal";
+import {
+  User as UserIcon,
+  LogOut,
+  LogIn,
+  LayoutDashboard,
+  Linkedin,
+  Twitter,
+  Instagram,
+  Facebook,
+  Youtube,
+  Github,
+  Globe,
+  Bell,
+} from "lucide-react";
 
 export const THEME_PRESETS: Record<string, ThemeConfig> = {
   black: {
     id: "black",
-    name: "Black",
+    name: "Dark Slate",
     isDark: true,
-    background: "bg-black text-white",
+    background: "bg-slate-950 text-slate-100",
     text: "text-slate-300",
     headingText: "text-white",
-    cardBg: "bg-slate-950/80 border border-slate-800",
-    cardBorder: "border-slate-800",
-    accentText: "text-white",
-    accentBg: "bg-white/10",
-    accentBorder: "border-white/20",
-    buttonActive: "bg-white text-black",
-    buttonHover: "bg-slate-900 hover:bg-slate-800 text-white border border-slate-800",
-    inputBg: "bg-slate-950 border-slate-800 text-white focus:ring-white/20",
+    cardBg: "bg-slate-900/80 border border-slate-800/80 shadow-xl backdrop-blur-md",
+    cardBorder: "border-slate-800/80",
+    accentText: "text-indigo-300",
+    accentBg: "bg-indigo-500/15",
+    accentBorder: "border-indigo-500/25",
+    buttonActive: "bg-indigo-600 text-white shadow-lg shadow-indigo-600/25",
+    buttonHover: "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700",
+    inputBg: "bg-slate-900 border-slate-800 text-white focus:ring-indigo-500/30",
     secondaryText: "text-slate-400",
-    accentGradient: "from-white to-slate-300",
-    statCardBg: "bg-slate-900/70 border-slate-800",
+    accentGradient: "from-indigo-400 via-purple-400 to-pink-400",
+    statCardBg: "bg-slate-900/80 border-slate-800/80",
     statCardText: "text-slate-200",
   },
   white: {
     id: "white",
-    name: "White",
+    name: "Soft Light",
     isDark: false,
-    background: "bg-white text-slate-900",
+    background: "bg-slate-50 text-slate-800",
     text: "text-slate-600",
     headingText: "text-slate-900",
-    cardBg: "bg-white border border-slate-200 shadow-sm",
-    cardBorder: "border-slate-200",
-    accentText: "text-slate-900",
-    accentBg: "bg-slate-100",
-    accentBorder: "border-slate-200",
-    buttonActive: "bg-slate-900 text-white",
-    buttonHover: "bg-slate-50 hover:bg-slate-100 text-slate-900 border border-slate-200",
-    inputBg: "bg-slate-50 border-slate-200 text-slate-900 focus:ring-slate-300",
+    cardBg: "bg-white border border-slate-200/90 shadow-sm backdrop-blur-md",
+    cardBorder: "border-slate-200/90",
+    accentText: "text-indigo-600",
+    accentBg: "bg-indigo-50",
+    accentBorder: "border-indigo-200",
+    buttonActive: "bg-indigo-600 text-white shadow-md shadow-indigo-600/20",
+    buttonHover: "bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200",
+    inputBg: "bg-white border-slate-200 text-slate-900 focus:ring-indigo-500/30",
     secondaryText: "text-slate-500",
-    accentGradient: "from-slate-900 to-slate-700",
+    accentGradient: "from-indigo-600 via-purple-600 to-indigo-800",
     statCardBg: "bg-white border border-slate-200",
     statCardText: "text-slate-800",
   },
@@ -76,13 +92,53 @@ export const THEME_PRESETS: Record<string, ThemeConfig> = {
 export default function App() {
   const [theme, setTheme] = useState<"black" | "white">(() => {
     const savedTheme = localStorage.getItem("qr-studio-theme");
-    return savedTheme === "black" || savedTheme === "white" ? savedTheme : "white";
+    return savedTheme === "black" || savedTheme === "white" ? savedTheme : "black";
   });
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    try {
+      const saved = localStorage.getItem("qr-notifications");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const addNotification = React.useCallback((title: string, message: string, type: AppNotification["type"]) => {
+    const item: AppNotification = {
+      id: "notif_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+      title,
+      message,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type,
+    };
+    setNotifications((prev) => {
+      const updated = [item, ...prev].slice(0, 20);
+      localStorage.setItem("qr-notifications", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const clearNotifications = () => {
+    setNotifications([]);
+    localStorage.removeItem("qr-notifications");
+  };
 
   useEffect(() => {
     localStorage.setItem("qr-studio-theme", theme);
+    const bg = theme === "black" ? "#090d16" : "#f8fafc";
+    document.body.style.backgroundColor = bg;
+    document.documentElement.style.backgroundColor = bg;
   }, [theme]);
+
+  // Ensure site always starts from the top on refresh
+  useEffect(() => {
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, []);
 
   const activeTheme = THEME_PRESETS[theme] || THEME_PRESETS.white;
 
@@ -106,8 +162,51 @@ export default function App() {
   // Filter states
   const [selectedTagFilter, setSelectedTagFilter] = useState("all");
 
-  // Dialog/Modal states
+  // Auth & View Router states
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(() => {
+    try {
+      const savedUser = localStorage.getItem("qr-user");
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [currentView, setCurrentView] = useState<"landing" | "studio">(() => {
+    try {
+      const savedUser = localStorage.getItem("qr-user");
+      return savedUser ? "studio" : "landing";
+    } catch (e) {
+      return "landing";
+    }
+  });
   const [activeTab, setActiveTab] = useState<"dashboard" | "create">("dashboard");
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [currentView]);
+
+  const handleLoginSuccess = (user: { name: string; email: string }) => {
+    setCurrentUser(user);
+    localStorage.setItem("qr-user", JSON.stringify(user));
+    setAuthModalOpen(false);
+    setCurrentView("studio");
+    setActiveTab("dashboard");
+    showToast(`Welcome back, ${user.name}!`);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem("qr-user");
+    setCurrentView("landing");
+    showToast("Signed out successfully.");
+  };
+
+  const openAuth = (mode: "login" | "signup" = "login") => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
   const [selectedAnalyticsId, setSelectedAnalyticsId] = useState<string | null>(null);
   const [customizingLink, setCustomizingLink] = useState<{ id: string; name: string; destinationUrl?: string } | null>(null);
   const [editingLink, setEditingLink] = useState<RedirectLink | null>(null);
@@ -121,6 +220,16 @@ export default function App() {
   useEffect(() => {
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+
+      if (authModalOpen) {
+        setAuthModalOpen(false);
+        return;
+      }
+
+      if (showNotifications) {
+        setShowNotifications(false);
+        return;
+      }
 
       if (customizingLink) {
         setCustomizingLink(null);
@@ -139,12 +248,25 @@ export default function App() {
 
       if (showThemePicker) {
         setShowThemePicker(false);
+        return;
+      }
+
+      if (selectedAnalyticsId) {
+        setSelectedAnalyticsId(null);
       }
     };
 
     window.addEventListener("keydown", handleEscapeKey);
     return () => window.removeEventListener("keydown", handleEscapeKey);
-  }, [customizingLink, editingLink, showLogoPrompt, showThemePicker]);
+  }, [
+    authModalOpen,
+    showNotifications,
+    customizingLink,
+    editingLink,
+    showLogoPrompt,
+    showThemePicker,
+    selectedAnalyticsId,
+  ]);
 
   const handleAddTag = () => {
     const clean = tagInput.trim();
@@ -480,7 +602,7 @@ export default function App() {
         scans: [],
         tags: tags,
         qrConfig: createLogoData
-          ? { logoType: "upload", customLogoUrl: createLogoData, logoSize: 24, logoShape: "rounded", logoPadding: 4 }
+          ? { logoType: "upload" as const, customLogoUrl: createLogoData, logoSize: 24, logoShape: "rounded" as const, logoPadding: 4 }
           : undefined,
       };
 
@@ -490,6 +612,7 @@ export default function App() {
       localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
       showToast(`Dynamic QR Code "${newLink.name}" generated successfully!`);
+      addNotification("New QR Code Added", `Dynamic QR Code "${newLink.name}" was generated successfully.`, "create");
       setName("");
       setDestinationUrl("");
       setCreateLogoData(null);
@@ -531,7 +654,7 @@ export default function App() {
         localLinks[existsIndex].status = nextStatus;
         localLinks[existsIndex].updatedAt = new Date().toISOString();
       } else {
-        const cloned = { ...link, status: nextStatus, updatedAt: new Date().toISOString() };
+        const cloned: RedirectLink = { ...link, status: nextStatus, updatedAt: new Date().toISOString() };
         localLinks.push(cloned);
       }
       
@@ -541,6 +664,7 @@ export default function App() {
         prev.map((r) => (r.id === link.id ? { ...r, status: nextStatus } : r))
       );
       showToast(`QR Code "${link.name}" is now ${nextStatus}!`);
+      addNotification("Status Changed", `QR Code "${link.name}" status updated to ${nextStatus}.`, "status");
     } catch (err: any) {
       showToast(err.message, "error");
     }
@@ -565,7 +689,7 @@ export default function App() {
         name: editName.trim(),
         destinationUrl: editUrl.trim(),
         tags: editTags,
-        qrConfig: editLogoData ? { logoType: "upload", customLogoUrl: editLogoData, logoSize: 24, logoShape: "rounded", logoPadding: 4 } : undefined,
+        qrConfig: editLogoData ? { logoType: "upload" as const, customLogoUrl: editLogoData, logoSize: 24, logoShape: "rounded" as const, logoPadding: 4 } : undefined,
         updatedAt: new Date().toISOString(),
       };
 
@@ -578,6 +702,7 @@ export default function App() {
       localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
       showToast("Redirect configuration updated successfully!");
+      addNotification("Details Updated", `Updated target link details for "${editName.trim()}".`, "edit");
       setEditingLink(null);
       fetchRedirects();
     } catch (err: any) {
@@ -739,7 +864,30 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen font-sans pb-16 transition-colors duration-300 ${activeTheme.background} ${activeTheme.text}`}>
+    <div className={`relative min-h-screen flex flex-col justify-between font-sans overflow-x-hidden transition-colors duration-300 ${activeTheme.background} ${activeTheme.text}`}>
+      {/* Ambient Soft Glowing Radial Orbs */}
+      <div className="pointer-events-none fixed top-[-10%] left-[15%] w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[140px] z-0" />
+      <div className="pointer-events-none fixed bottom-[-10%] right-[15%] w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[140px] z-0" />
+
+      {/* Diagonal Full-Screen Background Watermark */}
+      <div className="pointer-events-none fixed inset-0 w-full h-full z-0 overflow-hidden flex flex-col justify-between select-none opacity-[0.12] sm:opacity-[0.15] -rotate-12 scale-125 transform-gpu">
+        {Array.from({ length: 18 }).map((_, idx) => (
+          <div
+            key={idx}
+            className={`whitespace-nowrap font-mono text-xs sm:text-sm font-bold tracking-widest uppercase flex gap-4 sm:gap-6 ${
+              idx % 2 === 0 ? "-ml-20" : "-ml-64"
+            }`}
+          >
+            {Array.from({ length: 6 }).map((_, cIdx) => (
+              <span key={cIdx} className="flex items-center gap-4 sm:gap-6">
+                <span>© {new Date().getFullYear()} Ranbidge Solutions Private Limited. All rights reserved.</span>
+                <span className="opacity-40">•</span>
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+
       {/* Visual Floating Toast Notifications */}
       <AnimatePresence>
         {toast && (
@@ -763,9 +911,29 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Top Global Navigation Bar (Shown on Landing Page) */}
+      {currentView === "landing" && (
+        <nav className={`border-b backdrop-blur-md sticky top-0 z-30 transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950/90 border-slate-800' : 'bg-slate-50/90 border-slate-200'}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 py-2 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 cursor-pointer" onClick={() => setCurrentView("landing")}>
+              <img src="/ranbidge-logo.png" alt="RANBIDGE" className="h-12 xs:h-14 sm:h-16 md:h-18 w-auto object-contain drop-shadow-md" />
+              <span className={`font-display font-bold text-xl sm:text-2xl md:text-3xl ${activeTheme.headingText}`}>
+                RANBIDGE <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">QR Studio</span>
+              </span>
+            </div>
+          </div>
+        </nav>
+      )}
+
       {/* Main Core View Router */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        {selectedAnalyticsId ? (
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 w-full flex-1 flex flex-col">
+        {currentView === "landing" ? (
+          <LandingPage
+            onOpenDashboard={() => setCurrentView("studio")}
+            onOpenAuth={openAuth}
+            activeTheme={activeTheme}
+          />
+        ) : selectedAnalyticsId ? (
           // Deep-dive Analytics Screen
           <AnalyticsView
             redirectId={selectedAnalyticsId}
@@ -776,135 +944,143 @@ export default function App() {
             activeTheme={activeTheme}
           />
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-5 sm:space-y-6">
             {/* Elegant Display Header */}
-            <header className={`flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-6 transition-colors duration-300 ${activeTheme.cardBorder}`}>
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${activeTheme.accentGradient} flex items-center justify-center text-white shadow-lg shadow-indigo-500/15`}>
-                    <QrCode className="w-6 h-6 animate-pulse" />
+            <header className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 border-b pb-4 sm:pb-5 transition-colors duration-300 ${activeTheme.cardBorder}`}>
+              <div className="space-y-2 sm:space-y-3">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <img src="/ranbidge-logo.png" alt="RANBIDGE Solutions Private Limited" className="h-12 xs:h-14 sm:h-18 md:h-24 w-auto object-contain drop-shadow-md shrink-0" />
+                  <div>
+                    <h1 className={`text-2xl xs:text-3xl sm:text-4xl font-display font-bold tracking-tight transition-colors duration-300 ${activeTheme.headingText}`}>
+                      Dynamic <span className={`text-transparent bg-clip-text bg-gradient-to-r transition-all duration-300 ${activeTheme.accentGradient}`}>QR Studio</span>
+                    </h1>
                   </div>
-                  <h1 className={`text-3xl font-display font-bold tracking-tight transition-colors duration-300 ${activeTheme.headingText}`}>
-                    Dynamic <span className={`text-transparent bg-clip-text bg-gradient-to-r transition-all duration-300 ${activeTheme.accentGradient}`}>QR Studio</span>
-                  </h1>
                 </div>
-                <p className={`text-sm transition-colors duration-300 ${activeTheme.secondaryText} max-w-xl`}>
-                  Generate permanent QR codes with changeable destination links. Update your target URL instantly without reprint.
+                <p className={`text-xs sm:text-sm transition-colors duration-300 ${activeTheme.secondaryText} max-w-xl`}>
+                  Generate permanent QR codes with changeable destination links. Update target URLs instantly without reprinting.
                 </p>
               </div>
 
               {/* Header Actions */}
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Dynamic Theme Picker */}
-                <div className="relative">
+              <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setShowThemePicker(!showThemePicker)}
-                    className={`p-3 rounded-xl flex items-center justify-center border transition shadow-sm ${
-                      activeTheme.isDark 
-                        ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60" 
+                    onClick={handleExportDB}
+                    className={`px-3 py-2 border rounded-xl transition flex items-center gap-1.5 ${
+                      activeTheme.isDark
+                        ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
                         : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
                     }`}
-                    title="Choose application theme"
+                    title="Export Database (db.json) for static build hosting"
                   >
-                    <Palette className={`w-4 h-4 ${activeTheme.accentText}`} />
+                    <Download className="w-4 h-4" />
+                    <span className="hidden xs:inline text-xs font-semibold">Export DB</span>
                   </button>
+                </div>
 
-                  <AnimatePresence>
-                    {showThemePicker && (
-                      <>
-                        {/* Overlay to dismiss */}
-                        <div className="fixed inset-0 z-10" onClick={() => setShowThemePicker(false)} />
-                        
+                <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                  <div className={`flex border rounded-xl p-1 w-full sm:w-auto shrink-0 transition-colors ${activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-200/50 border-slate-300/60'}`}>
+                    <button
+                      onClick={() => setActiveTab("dashboard")}
+                      className={`flex-1 sm:flex-none text-center px-4 py-2 text-xs font-semibold rounded-lg transition ${
+                        activeTab === "dashboard" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
+                      }`}
+                    >
+                      My QR Codes
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("create")}
+                      className={`flex-1 sm:flex-none text-center px-4 py-2 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                        activeTab === "create" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
+                      }`}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      New QR Code
+                    </button>
+                  </div>
+
+                  {/* Notification Bell (Left of Sign Out) */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowNotifications(!showNotifications)}
+                      className={`p-2.5 border rounded-xl transition relative flex items-center justify-center ${
+                        activeTheme.isDark
+                          ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
+                          : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
+                      }`}
+                      title="Notifications"
+                    >
+                      <Bell className="w-4 h-4 text-indigo-400" />
+                      {notifications.length > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-indigo-600 text-white font-mono font-bold text-[10px] rounded-full flex items-center justify-center border-2 border-slate-900 shadow-md">
+                          {notifications.length}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Notifications Dropdown */}
+                    <AnimatePresence>
+                      {showNotifications && (
                         <motion.div
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className={`absolute right-0 mt-2 w-56 rounded-2xl border p-2 shadow-2xl z-20 backdrop-blur-md ${
-                            activeTheme.isDark 
-                              ? "bg-slate-950/95 border-slate-800 text-slate-200" 
-                              : "bg-white border-slate-200 text-slate-800"
-                          }`}
+                          className={`absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl border shadow-2xl p-4 z-50 backdrop-blur-xl ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
                         >
-                          <div className="px-3 py-2 border-b border-slate-800/10 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                            Choose Vibe
-                          </div>
-                          <div className="space-y-1 mt-1.5">
-                            {Object.values(THEME_PRESETS).map((p) => {
-                              const isSelected = theme === p.id;
-                              return (
-                                <button
-                                  key={p.id}
-                                  onClick={() => {
-                                    setTheme(p.id as any);
-                                    setShowThemePicker(false);
-                                    showToast(`Theme switched to ${p.name}!`);
-                                  }}
-                                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
-                                    isSelected 
-                                      ? activeTheme.isDark ? "bg-slate-900 text-white font-semibold" : "bg-indigo-50 text-indigo-700 font-semibold"
-                                      : activeTheme.isDark ? "hover:bg-slate-900/50 text-slate-400 hover:text-slate-200" : "hover:bg-slate-50 text-slate-600 hover:text-slate-900"
+                          {notifications.length > 0 && (
+                            <div className="flex justify-end mb-2">
+                              <button
+                                onClick={clearNotifications}
+                                className="text-[10px] font-semibold text-rose-400 hover:text-rose-300 transition"
+                              >
+                                Clear All
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="space-y-2.5 text-xs max-h-72 overflow-y-auto pr-1">
+                            {notifications.length === 0 ? (
+                              <div className="py-6 text-center space-y-2">
+                                <Bell className="w-8 h-8 mx-auto text-slate-500/40" />
+                                <p className={`font-semibold text-xs ${activeTheme.headingText}`}>No Notifications</p>
+                                <p className={`text-[11px] leading-relaxed px-4 ${activeTheme.secondaryText}`}>
+                                  Real-time alerts for new QR codes, edits, scans, and status changes will appear here.
+                                </p>
+                              </div>
+                            ) : (
+                              notifications.map((notif) => (
+                                <div
+                                  key={notif.id}
+                                  className={`p-2.5 rounded-xl border transition-all ${
+                                    activeTheme.isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-50 border-slate-200'
                                   }`}
                                 >
-                                  <div className="flex items-center gap-2.5">
-                                    {/* Small round color indicators */}
-                                    <span className={`w-3.5 h-3.5 rounded-full bg-gradient-to-tr ${p.accentGradient} border border-white/10 shrink-0 shadow-sm`} />
-                                    <span>{p.name}</span>
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-semibold text-indigo-400 text-xs">{notif.title}</span>
+                                    <span className="text-[10px] font-mono text-slate-500">{notif.timestamp}</span>
                                   </div>
-                                  {isSelected && (
-                                    <Check className={`w-3.5 h-3.5 ${activeTheme.accentText}`} />
-                                  )}
-                                </button>
-                              );
-                            })}
+                                  <p className={`text-[11px] leading-snug ${activeTheme.secondaryText}`}>
+                                    {notif.message}
+                                  </p>
+                                </div>
+                              ))
+                            )}
                           </div>
                         </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
-                <button
-                  onClick={fetchRedirects}
-                  disabled={loading}
-                  className={`p-2.5 border rounded-xl transition disabled:opacity-50 ${
-                    activeTheme.isDark
-                      ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
-                      : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
-                  }`}
-                  title="Reload dashboard database"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={handleExportDB}
-                  className={`p-2.5 border rounded-xl transition flex items-center gap-1.5 ${
-                    activeTheme.isDark
-                      ? "bg-slate-900/60 border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/60"
-                      : "bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50"
-                  }`}
-                  title="Export Database (db.json) for static build hosting"
-                >
-                  <Download className="w-4 h-4" />
-                  <span className="hidden md:inline text-xs font-semibold">Export DB</span>
-                </button>
-                <div className={`flex border rounded-xl p-1 shrink-0 transition-colors ${activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-200/50 border-slate-300/60'}`}>
-                  <button
-                    onClick={() => setActiveTab("dashboard")}
-                    className={`px-4 py-2 text-xs font-semibold rounded-lg transition ${
-                      activeTab === "dashboard" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
-                    }`}
-                  >
-                    My QR Codes
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("create")}
-                    className={`px-4 py-2 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 ${
-                      activeTab === "create" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
-                    }`}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    New QR Code
-                  </button>
+                  {currentUser && (
+                    <button
+                      onClick={handleLogout}
+                      className="px-3.5 py-2 border rounded-xl text-xs font-semibold transition text-rose-500 hover:text-rose-400 border-rose-500/20 hover:bg-rose-500/10 flex items-center gap-1.5 shrink-0"
+                      title="Sign Out"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </header>
@@ -1059,17 +1235,17 @@ export default function App() {
                         <div className={`flex rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/45 transition border ${
                           activeTheme.isDark ? 'bg-slate-900 border-slate-700/60' : 'bg-slate-100 border-slate-200'
                         }`}>
-                          <span className={`px-3.5 py-3 text-xs font-mono select-none flex items-center border-r shrink-0 ${
+                          <span className={`px-2.5 sm:px-3.5 py-3 text-xs font-mono select-none flex items-center border-r shrink-0 ${
                             activeTheme.isDark ? 'bg-slate-800 text-slate-400 border-slate-700/60' : 'bg-slate-200/60 text-slate-500 border-slate-300/60'
                           }`}>
-                            {window.location.origin}/r/
+                            <span className="hidden sm:inline">{window.location.origin}</span>/r/
                           </span>
                           <input
                             type="text"
                             value={customSlug}
                             onChange={(e) => setCustomSlug(e.target.value)}
                             placeholder="summer-promo"
-                            className={`w-full bg-transparent px-4 py-3 text-sm focus:outline-none font-mono ${activeTheme.isDark ? 'text-slate-200 placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'}`}
+                            className={`w-full bg-transparent px-3 sm:px-4 py-3 text-sm focus:outline-none font-mono ${activeTheme.isDark ? 'text-slate-200 placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'}`}
                           />
                         </div>
                         <p className={`text-xs transition-colors duration-300 ${activeTheme.secondaryText}`}>Leave blank to generate a short, secure random link (e.g. <code className={`px-1 py-0.5 rounded ${activeTheme.accentBg} ${activeTheme.accentText}`}>gY7f2A</code>).</p>
@@ -1337,26 +1513,26 @@ export default function App() {
                                   <div className={`space-y-2 pt-2 border-t transition-colors duration-300 ${activeTheme.cardBorder}`}>
                                     <div className="space-y-1">
                                       <span className={`text-[10px] uppercase tracking-wider font-semibold transition-colors duration-300 ${activeTheme.secondaryText}`}>Printed QR</span>
-                                      <div className={`flex items-center justify-between p-2 rounded-lg border transition-all duration-300 ${
+                                      <div className={`flex items-center justify-between p-2 rounded-lg border gap-2 transition-all duration-300 ${
                                         activeTheme.isDark 
                                           ? 'bg-slate-950/40 border-slate-800/60 text-slate-300' 
                                           : 'bg-slate-100/50 border-slate-200/50 text-slate-700'
                                       }`}>
-                                        <span className="font-mono text-xs truncate max-w-[140px] sm:max-w-[180px] md:max-w-[150px] lg:max-w-[220px]" title={link.destinationUrl}>
+                                        <span className="font-mono text-xs truncate flex-1 min-w-0" title={link.destinationUrl}>
                                           Encodes destination URL
                                         </span>
-                                        <span className={`text-xs ${activeTheme.secondaryText}`}>Preview below</span>
+                                        <span className={`text-xs shrink-0 ${activeTheme.secondaryText}`}>Preview below</span>
                                       </div>
                                     </div>
 
                                     <div className="space-y-1">
                                       <span className={`text-[10px] uppercase tracking-wider font-semibold transition-colors duration-300 ${activeTheme.secondaryText}`}>Instant target Destination</span>
-                                      <div className={`flex items-center justify-between p-2 rounded-lg border transition-all duration-300 ${
+                                      <div className={`flex items-center justify-between p-2 rounded-lg border gap-2 transition-all duration-300 ${
                                         activeTheme.isDark 
                                           ? 'bg-slate-950/40 border-slate-800/60 text-slate-300' 
                                           : 'bg-slate-100/50 border-slate-200/50 text-slate-700'
                                       }`}>
-                                        <span className="font-mono text-xs truncate max-w-[140px] sm:max-w-[180px] md:max-w-[150px] lg:max-w-[220px]" title={link.destinationUrl}>
+                                        <span className="font-mono text-xs truncate flex-1 min-w-0" title={link.destinationUrl}>
                                           {link.destinationUrl}
                                         </span>
                                         <button
@@ -1367,7 +1543,7 @@ export default function App() {
                                             setEditTags(link.tags || []);
                                             setEditTagInput("");
                                           }}
-                                          className={`p-1 rounded transition-colors ${
+                                          className={`p-1.5 rounded transition-colors shrink-0 ${
                                             activeTheme.isDark ? 'hover:bg-slate-800 text-indigo-400 hover:text-indigo-300' : 'hover:bg-slate-200 text-indigo-600 hover:text-indigo-700'
                                           }`}
                                           title="Instantly Change target URL"
@@ -1395,24 +1571,23 @@ export default function App() {
                                     className="w-full h-full object-contain"
                                     config={link.qrConfig}
                                   />
-                                  {/* hover overlay removed per request */}
                                 </button>
                               </div>
                             </div>
 
                             {/* Cards Action panel */}
-                            <div className={`flex items-center justify-between pt-3 border-t transition-colors duration-300 ${activeTheme.cardBorder}`}>
-                              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                            <div className={`flex flex-col xs:flex-row items-stretch xs:items-center justify-between gap-3 pt-3 border-t transition-colors duration-300 ${activeTheme.cardBorder}`}>
+                              <div className="flex items-center justify-between xs:justify-start gap-1.5 text-xs text-slate-400">
                                 <span className={`font-mono font-bold px-2 py-0.5 rounded-md border transition-colors duration-300 ${activeTheme.accentBg} ${activeTheme.accentText} ${activeTheme.accentBorder}`}>
                                   {link.scanCount}
                                 </span>
                                 <span className={`font-medium transition-colors duration-300 ${activeTheme.secondaryText}`}>total scans</span>
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="grid grid-cols-4 sm:flex items-center gap-1.5 sm:gap-2 w-full xs:w-auto">
                                 <button
                                   onClick={() => setCustomizingLink({ id: link.id, name: link.name, destinationUrl: link.destinationUrl })}
-                                  className={`p-2 rounded-xl border transition flex items-center justify-center ${
+                                  className={`p-2.5 rounded-xl border transition flex items-center justify-center min-h-[40px] ${
                                     activeTheme.isDark
                                       ? "bg-slate-900 hover:bg-slate-950 text-slate-300 hover:text-indigo-400 border-slate-700/30"
                                       : "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-indigo-600 border-slate-200"
@@ -1432,7 +1607,7 @@ export default function App() {
                                     a.download = `${link.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-qr.png`;
                                     a.click();
                                   }}
-                                  className={`p-2 rounded-xl border transition flex items-center justify-center ${
+                                  className={`p-2.5 rounded-xl border transition flex items-center justify-center min-h-[40px] ${
                                     activeTheme.isDark
                                       ? "bg-slate-900 hover:bg-slate-950 text-slate-300 hover:text-indigo-400 border-slate-700/30"
                                       : "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-indigo-600 border-slate-200"
@@ -1444,19 +1619,19 @@ export default function App() {
 
                                 <button
                                   onClick={() => setSelectedAnalyticsId(link.id)}
-                                  className={`py-2 px-3.5 rounded-xl border text-xs font-semibold transition flex items-center gap-1.5 ${
+                                  className={`py-2 px-3 rounded-xl border text-xs font-semibold transition flex items-center justify-center gap-1.5 min-h-[40px] ${
                                     activeTheme.isDark
                                       ? "bg-slate-900 hover:bg-slate-950 text-slate-300 hover:text-indigo-400 border-slate-700/30"
                                       : "bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-indigo-600 border-slate-200"
                                   }`}
                                 >
                                   <Eye className="w-3.5 h-3.5" />
-                                  Analytics
+                                  <span className="hidden xs:inline sm:inline">Analytics</span>
                                 </button>
 
                                 <button
                                   onClick={() => handleDelete(link.id, link.name)}
-                                  className={`p-2 rounded-xl border transition flex items-center justify-center ${
+                                  className={`p-2.5 rounded-xl border transition flex items-center justify-center min-h-[40px] ${
                                     activeTheme.isDark
                                       ? "bg-slate-900 hover:bg-rose-950 text-slate-400 hover:text-rose-400 border-slate-700/30"
                                       : "bg-slate-50 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border-slate-200"
@@ -1483,27 +1658,27 @@ export default function App() {
       {/* MODAL 1: Interactive QR Code Styling Customizer */}
       <AnimatePresence>
         {customizingLink && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={`border rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl transition-all duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
+              className={`border rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl transition-all duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
             >
-              <div className={`px-6 py-4 border-b flex justify-between items-center transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
+              <div className={`px-4 sm:px-6 py-4 border-b flex justify-between items-center sticky top-0 z-10 backdrop-blur-md transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950/90 border-slate-800/80' : 'bg-slate-50/90 border-slate-200'}`}>
                 <div>
-                  <h3 className={`font-display font-bold text-lg transition-colors duration-300 ${activeTheme.headingText}`}>QR Studio Generator</h3>
+                  <h3 className={`font-display font-bold text-base sm:text-lg transition-colors duration-300 ${activeTheme.headingText}`}>QR Studio Generator</h3>
                   <p className={`text-xs transition-colors duration-300 ${activeTheme.secondaryText}`}>Styling parameters for &quot;{customizingLink.name}&quot;</p>
                 </div>
                 <button
                   onClick={() => setCustomizingLink(null)}
-                  className={`p-1 rounded-lg transition ${activeTheme.isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'}`}
+                  className={`p-1.5 rounded-lg transition ${activeTheme.isDark ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'}`}
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <QRCodeCustomizer
                   redirectId={customizingLink.id}
                   redirectUrl={customizingLink.destinationUrl || (redirects.find((r) => r.id === customizingLink.id)?.destinationUrl ?? "")}
@@ -1521,8 +1696,8 @@ export default function App() {
         {/* Modal: Logo Prompt during Create */}
         <AnimatePresence>
           {showLogoPrompt && (
-            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={`w-full max-w-md p-6 rounded-2xl ${activeTheme.cardBg} ${activeTheme.cardBorder}`}>
+            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={`w-full max-w-md max-h-[90vh] overflow-y-auto p-5 sm:p-6 rounded-2xl ${activeTheme.cardBg} ${activeTheme.cardBorder}`}>
                 <h3 className={`font-display font-bold text-lg mb-2 ${activeTheme.headingText}`}>Add a center logo?</h3>
                 <p className={`text-sm mb-4 ${activeTheme.secondaryText}`}>You can upload a small PNG/JPG to render at the center of the QR code. This improves branding but must be legible.</p>
 
@@ -1554,14 +1729,14 @@ export default function App() {
       {/* MODAL 2: Instant Destination Modifier */}
       <AnimatePresence>
         {editingLink && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={`border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl transition-all duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
+              className={`border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl transition-all duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
             >
-              <div className={`px-6 py-4 border-b flex justify-between items-center transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950 border-slate-800/80' : 'bg-slate-50 border-slate-200'}`}>
+              <div className={`px-4 sm:px-6 py-4 border-b flex justify-between items-center sticky top-0 z-10 backdrop-blur-md transition-colors duration-300 ${activeTheme.isDark ? 'bg-slate-950/90 border-slate-800/80' : 'bg-slate-50/90 border-slate-200'}`}>
                 <h3 className={`font-display font-bold text-md transition-colors duration-300 ${activeTheme.headingText}`}>Edit Target Destination</h3>
                 <button
                   onClick={() => setEditingLink(null)}
@@ -1721,11 +1896,115 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <footer className={`mt-8 border-t pt-4 pb-4 transition-colors duration-300 ${activeTheme.cardBorder}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-sm text-slate-400 text-center">
-          <p className="text-[11px] text-slate-500 mx-auto inline-block leading-relaxed">
+      {/* Auth Modal (Login / Create Account) */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+        activeTheme={activeTheme}
+        initialMode={authModalMode}
+      />
+
+      <footer className={`mt-6 border-t pt-4 pb-4 transition-colors duration-300 ${activeTheme.cardBorder}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <p className="text-xs text-slate-500 font-medium">
             © {new Date().getFullYear()} Ranbidge Solutions Private Limited. All rights reserved.
           </p>
+
+          {/* Social Media Accounts */}
+          <div className="flex items-center gap-2.5 flex-wrap justify-center">
+            <a
+              href="https://linkedin.com/in/ranbidge-solutions-private-limited-a98983376"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`p-2 rounded-xl border transition-colors ${
+                activeTheme.isDark
+                  ? "bg-slate-900 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30"
+                  : "bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300"
+              }`}
+              title="LinkedIn"
+            >
+              <Linkedin className="w-4 h-4" />
+            </a>
+            <a
+              href="https://x.com/RanbridgePvtLtd"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`p-2 rounded-xl border transition-colors ${
+                activeTheme.isDark
+                  ? "bg-slate-900 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30"
+                  : "bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300"
+              }`}
+              title="Twitter / X"
+            >
+              <Twitter className="w-4 h-4" />
+            </a>
+            <a
+              href="https://www.instagram.com/ranbidge_solutions/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`p-2 rounded-xl border transition-colors ${
+                activeTheme.isDark
+                  ? "bg-slate-900 border-slate-800 text-slate-400 hover:text-pink-400 hover:border-pink-500/30"
+                  : "bg-white border-slate-200 text-slate-500 hover:text-pink-600 hover:border-pink-300"
+              }`}
+              title="Instagram"
+            >
+              <Instagram className="w-4 h-4" />
+            </a>
+            <a
+              href="https://facebook.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`p-2 rounded-xl border transition-colors ${
+                activeTheme.isDark
+                  ? "bg-slate-900 border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-500/30"
+                  : "bg-white border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-300"
+              }`}
+              title="Facebook"
+            >
+              <Facebook className="w-4 h-4" />
+            </a>
+            <a
+              href="https://www.youtube.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`p-2 rounded-xl border transition-colors ${
+                activeTheme.isDark
+                  ? "bg-slate-900 border-slate-800 text-slate-400 hover:text-rose-400 hover:border-rose-500/30"
+                  : "bg-white border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-300"
+              }`}
+              title="YouTube"
+            >
+              <Youtube className="w-4 h-4" />
+            </a>
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`p-2 rounded-xl border transition-colors ${
+                activeTheme.isDark
+                  ? "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
+                  : "bg-white border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-300"
+              }`}
+              title="GitHub"
+            >
+              <Github className="w-4 h-4" />
+            </a>
+            <a
+              href="https://ranbidge-solutions-private-limited.onrender.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`p-2 rounded-xl border transition-colors ${
+                activeTheme.isDark
+                  ? "bg-slate-900 border-slate-800 text-slate-400 hover:text-indigo-400 hover:border-indigo-500/30"
+                  : "bg-white border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-300"
+              }`}
+              title="Ranbidge Official Website"
+            >
+              <Globe className="w-4 h-4" />
+            </a>
+          </div>
         </div>
       </footer>
     </div>

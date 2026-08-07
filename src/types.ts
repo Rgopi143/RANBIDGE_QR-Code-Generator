@@ -8,6 +8,14 @@ export interface Scan {
   referrer: string;
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  type: "create" | "edit" | "status" | "scan";
+}
+
 export interface QRConfig {
   fgColor?: string;
   bgColor?: string;
@@ -33,6 +41,7 @@ export interface RedirectLink {
   scansInLast24h?: number;
   tags?: string[];
   qrConfig?: QRConfig;
+  scans?: Scan[];
 }
 
 export interface RedirectLinkDetailed extends RedirectLink {

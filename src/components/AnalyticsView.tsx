@@ -205,10 +205,10 @@ export default function AnalyticsView({ redirectId, onBack, activeTheme }: Analy
     <div id="analytics-view-root" className="space-y-8 animate-fade-in">
       {/* Upper Navigation Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-3 sm:gap-4 min-w-0">
           <button
             onClick={onBack}
-            className={`p-2 rounded-xl transition shrink-0 border ${
+            className={`p-2.5 rounded-xl transition shrink-0 border ${
               activeTheme.isDark
                 ? "bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700"
                 : "bg-white hover:bg-slate-50 text-slate-750 border-slate-200"
@@ -217,18 +217,18 @@ export default function AnalyticsView({ redirectId, onBack, activeTheme }: Analy
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${data.status === "active" ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
-              <h1 className={`text-2xl font-display font-bold tracking-tight transition-colors duration-300 ${activeTheme.headingText}`}>{data.name}</h1>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${data.status === "active" ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+              <h1 className={`text-xl sm:text-2xl font-display font-bold tracking-tight truncate transition-colors duration-300 ${activeTheme.headingText}`}>{data.name}</h1>
             </div>
-            <p className={`text-sm mt-0.5 transition-colors duration-300 ${activeTheme.secondaryText}`}>
-              Target Link: <a href={data.destinationUrl} target="_blank" rel="noopener noreferrer" className={`hover:underline inline-flex items-center gap-1 font-mono text-xs ${activeTheme.accentText}`}>{data.destinationUrl}</a>
+            <p className={`text-xs sm:text-sm mt-0.5 transition-colors duration-300 ${activeTheme.secondaryText} truncate max-w-full`}>
+              Target Link: <a href={data.destinationUrl} target="_blank" rel="noopener noreferrer" className={`hover:underline inline-flex items-center gap-1 font-mono text-xs ${activeTheme.accentText} truncate max-w-[220px] xs:max-w-xs sm:max-w-md`}>{data.destinationUrl}</a>
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
           <button
             onClick={fetchAnalytics}
             className={`p-2.5 border rounded-xl transition ${
