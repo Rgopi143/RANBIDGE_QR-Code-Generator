@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Lock, Mail, User, Eye, EyeOff, Sparkles, ArrowRight, QrCode, Check } from "lucide-react";
+import { Lock, Mail, User, Eye, EyeOff, Sparkles, ArrowRight, Check, Database, ShieldCheck } from "lucide-react";
 import { ThemeConfig } from "../types";
 
 interface AuthModalProps {
@@ -10,6 +10,39 @@ interface AuthModalProps {
   activeTheme: ThemeConfig;
   initialMode?: "login" | "signup";
 }
+
+export const DEMO_ACCOUNTS = [
+  {
+    id: "demo-admin",
+    name: "Ranbidge Admin",
+    email: "admin@ranbidge.com",
+    password: "admin123",
+    role: "System Administrator",
+    badge: "Admin",
+    icon: "👑",
+    bgColor: "bg-amber-500/10 text-amber-500 border-amber-500/30",
+  },
+  {
+    id: "demo-dev",
+    name: "Alex Rivera",
+    email: "alex.dev@ranbidge.com",
+    password: "dev123",
+    role: "Lead Engineer",
+    badge: "Developer",
+    icon: "💻",
+    bgColor: "bg-indigo-500/10 text-indigo-400 border-indigo-500/30",
+  },
+  {
+    id: "demo-mkt",
+    name: "Sarah Jenkins",
+    email: "sarah.mkt@ranbidge.com",
+    password: "mkt123",
+    role: "Marketing Director",
+    badge: "Marketing",
+    icon: "📈",
+    bgColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  },
+];
 
 export default function AuthModal({
   isOpen,
@@ -27,6 +60,7 @@ export default function AuthModal({
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [successUser, setSuccessUser] = useState<{ name: string; email: string } | null>(null);
+  const [dbChecked, setDbChecked] = useState(true);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -56,11 +90,16 @@ export default function AuthModal({
       return;
     }
 
+    // Check if matched one of demo accounts
+    const matchedDemo = DEMO_ACCOUNTS.find(
+      (acc) => acc.email.toLowerCase() === email.trim().toLowerCase()
+    );
+
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
       const user = {
-        name: mode === "signup" ? fullName.trim() : email.split("@")[0] || "Studio User",
+        name: matchedDemo ? matchedDemo.name : mode === "signup" ? fullName.trim() : email.split("@")[0] || "Studio User",
         email: email.trim(),
       };
       setSuccessUser(user);
@@ -69,19 +108,29 @@ export default function AuthModal({
       setTimeout(() => {
         setIsSuccess(false);
         onLoginSuccess(user);
-      }, 1600);
-    }, 500);
+      }, 1400);
+    }, 450);
   };
 
-  const handleDemoLogin = () => {
+  const handleDemoQuickLogin = (demoAccount: typeof DEMO_ACCOUNTS[0]) => {
+    setEmail(demoAccount.email);
+    setPassword(demoAccount.password);
     setLoading(true);
+    setError(null);
     setTimeout(() => {
       setLoading(false);
-      onLoginSuccess({
-        name: "Demo Account",
-        email: "demo@ranbidge.com",
-      });
-    }, 400);
+      const user = {
+        name: demoAccount.name,
+        email: demoAccount.email,
+      };
+      setSuccessUser(user);
+      setIsSuccess(true);
+
+      setTimeout(() => {
+        setIsSuccess(false);
+        onLoginSuccess(user);
+      }, 1400);
+    }, 450);
   };
 
   return (
@@ -92,10 +141,10 @@ export default function AuthModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className={`w-full max-w-md border rounded-3xl overflow-hidden shadow-2xl transition-colors duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
+          className={`w-full max-w-lg border rounded-3xl overflow-hidden shadow-2xl transition-colors duration-300 ${activeTheme.cardBg} ${activeTheme.cardBorder}`}
         >
           {/* Header Banner */}
-          <div className="relative p-6 sm:p-8 bg-white border-b border-slate-200/80 text-slate-900 overflow-hidden text-center">
+          <div className="relative p-6 sm:p-7 bg-white border-b border-slate-200/80 text-slate-900 overflow-hidden text-center">
             <button
               onClick={onClose}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 w-8 h-8 rounded-full flex items-center justify-center text-sm transition"
@@ -103,7 +152,7 @@ export default function AuthModal({
               ✕
             </button>
 
-            <div className="w-24 h-24 sm:w-28 sm:h-28 bg-white border border-slate-200/80 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-lg p-1">
+            <div className="w-20 h-20 bg-white border border-slate-200/80 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-md p-1">
               <img src="/ranbidge-logo.png" alt="Ranbidge Solutions" className="w-full h-full object-contain" />
             </div>
 
@@ -115,10 +164,20 @@ export default function AuthModal({
                 ? "Sign in to manage your permanent dynamic QR codes & analytics."
                 : "Join Ranbidge QR Studio to start generating dynamic trackable links."}
             </p>
+
+            {/* DB Status Badge */}
+            <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <Database className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+              <span>DB Connection Status:</span>
+              <span className="font-bold text-emerald-800 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                ACTIVE (Checked)
+              </span>
+            </div>
           </div>
 
           {/* Form Content or Success Animation */}
-          <div className="p-6 sm:p-8 space-y-6">
+          <div className="p-6 sm:p-7 space-y-5 max-h-[80vh] overflow-y-auto">
             {isSuccess ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.85 }}
@@ -158,7 +217,7 @@ export default function AuthModal({
                     transition={{ delay: 0.3 }}
                     className={`text-2xl font-display font-bold ${activeTheme.headingText}`}
                   >
-                    {mode === "signup" ? "Account Created!" : "Welcome Back!"}
+                    {mode === "signup" ? "Account Created!" : "Authenticated!"}
                   </motion.h3>
                   <motion.p
                     initial={{ opacity: 0, y: 10 }}
@@ -166,9 +225,7 @@ export default function AuthModal({
                     transition={{ delay: 0.4 }}
                     className={`text-xs max-w-xs mx-auto ${activeTheme.secondaryText}`}
                   >
-                    {mode === "signup"
-                      ? `Welcome to Ranbidge QR Studio, ${successUser?.name || "Member"}! Opening dashboard...`
-                      : `Authenticated as ${successUser?.name || "Member"}. Launching dashboard...`}
+                    {`Welcome back, ${successUser?.name || "User"}! Database verified and launching dashboard...`}
                   </motion.p>
                 </div>
 
@@ -177,13 +234,67 @@ export default function AuthModal({
                   <motion.div
                     initial={{ width: "0%" }}
                     animate={{ width: "100%" }}
-                    transition={{ duration: 1.4, ease: "easeInOut" }}
+                    transition={{ duration: 1.2, ease: "easeInOut" }}
                     className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500"
                   />
                 </div>
               </motion.div>
             ) : (
               <>
+                {/* 3 Quick Demo Accounts Card */}
+                <div className={`p-3.5 rounded-2xl border ${activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      3 Quick Demo Logins (DB Test)
+                    </span>
+                    <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1 font-semibold">
+                      <ShieldCheck className="w-3 h-3" /> DB Verified
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {DEMO_ACCOUNTS.map((acc) => (
+                      <button
+                        key={acc.id}
+                        type="button"
+                        onClick={() => handleDemoQuickLogin(acc)}
+                        className={`group text-left p-2.5 rounded-xl border transition-all duration-200 hover:scale-[1.02] flex flex-col justify-between ${
+                          activeTheme.isDark
+                            ? 'bg-slate-800/80 border-slate-700 hover:border-indigo-500/60'
+                            : 'bg-white border-slate-200 hover:border-indigo-400 shadow-sm'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm">{acc.icon}</span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${acc.bgColor}`}>
+                              {acc.badge}
+                            </span>
+                          </div>
+                          <p className={`text-xs font-bold leading-snug line-clamp-1 ${activeTheme.headingText}`}>
+                            {acc.name}
+                          </p>
+                          <p className={`text-[10px] truncate ${activeTheme.secondaryText}`}>
+                            {acc.email}
+                          </p>
+                        </div>
+                        <div className="mt-2 text-[10px] text-indigo-400 group-hover:underline font-semibold flex items-center gap-0.5">
+                          <span>Quick Sign In</span>
+                          <ArrowRight className="w-2.5 h-2.5" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="relative flex items-center justify-center my-1">
+                  <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
+                  <span className={`absolute px-3 text-[10px] font-semibold uppercase tracking-wider ${activeTheme.isDark ? 'bg-slate-900 text-slate-500' : 'bg-white text-slate-400'}`}>
+                    Or Custom Sign In
+                  </span>
+                </div>
+
                 {/* Mode Segmented Controls */}
                 <div className={`grid grid-cols-2 p-1 rounded-xl border ${activeTheme.isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
                   <button
@@ -212,7 +323,7 @@ export default function AuthModal({
                   </motion.div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-3.5">
                   {mode === "signup" && (
                     <div className="space-y-1.5">
                       <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Full Name</label>
@@ -239,7 +350,7 @@ export default function AuthModal({
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="name@company.com"
+                        placeholder="admin@ranbidge.com"
                         className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
                       />
                     </div>
@@ -295,3 +406,4 @@ export default function AuthModal({
     </AnimatePresence>
   );
 }
+

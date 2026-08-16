@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { RedirectLink, ThemeConfig, AppNotification } from "./types";
 import { motion, AnimatePresence } from "motion/react";
+import { db } from "./firebase";
+import { collection, getDocs, doc, setDoc, deleteDoc } from "firebase/firestore";
+
 import {
   QrCode,
   Link2,
@@ -162,10 +165,11 @@ export default function App() {
   // Filter states
   const [selectedTagFilter, setSelectedTagFilter] = useState("all");
 
-  // Auth & View Router states
+  // Auth & View Router states (Session Timeout: session expires on closing site/tab)
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(() => {
     try {
-      const savedUser = localStorage.getItem("qr-user");
+      localStorage.removeItem("qr-user"); // Clean legacy persistent storage
+      const savedUser = sessionStorage.getItem("qr-user");
       return savedUser ? JSON.parse(savedUser) : null;
     } catch (e) {
       return null;
@@ -173,7 +177,7 @@ export default function App() {
   });
   const [currentView, setCurrentView] = useState<"landing" | "studio">(() => {
     try {
-      const savedUser = localStorage.getItem("qr-user");
+      const savedUser = sessionStorage.getItem("qr-user");
       return savedUser ? "studio" : "landing";
     } catch (e) {
       return "landing";
@@ -189,15 +193,29 @@ export default function App() {
 
   const handleLoginSuccess = (user: { name: string; email: string }) => {
     setCurrentUser(user);
-    localStorage.setItem("qr-user", JSON.stringify(user));
+    sessionStorage.setItem("qr-user", JSON.stringify(user));
+    localStorage.removeItem("qr-user");
     setAuthModalOpen(false);
     setCurrentView("studio");
     setActiveTab("dashboard");
     showToast(`Welcome back, ${user.name}!`);
+
+    // Sync user login record to Cloud Firestore
+    if (db) {
+      const userDocId = user.email.toLowerCase().replace(/[^a-z0-9]/g, "_");
+      setDoc(doc(db, "users", userDocId), {
+        id: userDocId,
+        name: user.name,
+        email: user.email,
+        status: "active",
+        lastLogin: new Date().toISOString(),
+      }, { merge: true }).catch((e) => console.warn("Firestore user sync notice:", e));
+    }
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
+    sessionStorage.removeItem("qr-user");
     localStorage.removeItem("qr-user");
     setCurrentView("landing");
     showToast("Signed out successfully.");
@@ -369,6 +387,21 @@ export default function App() {
   const fetchRedirects = async () => {
     setLoading(true);
     try {
+      let firestoreLinks: RedirectLink[] = [];
+      try {
+        if (db) {
+          const snapshot = await getDocs(collection(db, "redirects"));
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as RedirectLink;
+            if (data && data.id) {
+              firestoreLinks.push(data);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Firestore fetch error, using local fallback:", e);
+      }
+
       let staticLinks: RedirectLink[] = [];
       try {
         const res = await fetch("/data/db.json");
@@ -415,9 +448,23 @@ export default function App() {
           mergedMap.set(link.id.toLowerCase(), link);
         }
       });
+      firestoreLinks.forEach(link => {
+        if (!deletedLinks.includes(link.id.toLowerCase())) {
+          mergedMap.set(link.id.toLowerCase(), link);
+        }
+      });
 
       const merged = Array.from(mergedMap.values());
       setRedirects(merged);
+
+      // Auto-seed Firestore if Firestore has no records yet
+      if (db && firestoreLinks.length === 0 && merged.length > 0) {
+        merged.forEach((item) => {
+          setDoc(doc(db, "redirects", item.id), item).catch((err) =>
+            console.warn("Auto-seed to Firestore notice:", err)
+          );
+        });
+      }
     } catch (err: any) {
       setError(err.message || "Something went wrong.");
     } finally {
@@ -522,6 +569,20 @@ export default function App() {
               currentLocal.push(cloned);
             }
             localStorage.setItem("qr-redirects", JSON.stringify(currentLocal));
+
+            if (db) {
+              try {
+                const updatedTarget = idx !== -1 ? currentLocal[idx] : { 
+                  ...foundLink, 
+                  scanCount: foundLink.scanCount + 1, 
+                  scans: [...(foundLink.scans || []), newScan],
+                  updatedAt: new Date().toISOString() 
+                };
+                await setDoc(doc(db, "redirects", foundLink.id), updatedTarget);
+              } catch (e) {
+                console.warn("Firestore scan sync notice:", e);
+              }
+            }
           } catch (e) {
             console.error("Failed to record analytics scan", e);
           }
@@ -611,6 +672,12 @@ export default function App() {
       localLinks.push(newLink);
       localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
+      if (db) {
+        setDoc(doc(db, "redirects", newLink.id), newLink).catch((e) =>
+          console.warn("Firestore setDoc notice:", e)
+        );
+      }
+
       showToast(`Dynamic QR Code "${newLink.name}" generated successfully!`);
       addNotification("New QR Code Added", `Dynamic QR Code "${newLink.name}" was generated successfully.`, "create");
       setName("");
@@ -660,6 +727,13 @@ export default function App() {
       
       localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
+      if (db) {
+        const updatedItem = localLinks[existsIndex !== -1 ? existsIndex : localLinks.length - 1];
+        setDoc(doc(db, "redirects", link.id), updatedItem).catch((e) =>
+          console.warn("Firestore status toggle notice:", e)
+        );
+      }
+
       setRedirects((prev) =>
         prev.map((r) => (r.id === link.id ? { ...r, status: nextStatus } : r))
       );
@@ -701,6 +775,13 @@ export default function App() {
 
       localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
+      if (db) {
+        const targetItem = localLinks[index !== -1 ? index : localLinks.length - 1];
+        setDoc(doc(db, "redirects", editingLink.id), targetItem).catch((e) =>
+          console.warn("Firestore edit notice:", e)
+        );
+      }
+
       showToast("Redirect configuration updated successfully!");
       addNotification("Details Updated", `Updated target link details for "${editName.trim()}".`, "edit");
       setEditingLink(null);
@@ -734,6 +815,13 @@ export default function App() {
 
       localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
 
+      if (db) {
+        const targetItem = localLinks[index !== -1 ? index : localLinks.length - 1];
+        setDoc(doc(db, "redirects", customizingLink.id), targetItem).catch((e) =>
+          console.warn("Firestore QR config notice:", e)
+        );
+      }
+
       showToast(`QR Code "${customizingLink.name}" styling and picture saved successfully!`);
       setCustomizingLink(null);
       fetchRedirects();
@@ -759,6 +847,12 @@ export default function App() {
       }
       localStorage.setItem("qr-deleted-redirects", JSON.stringify(deletedIds));
       localStorage.setItem("qr-redirects", JSON.stringify(localLinks));
+
+      if (db) {
+        deleteDoc(doc(db, "redirects", id)).catch((e) =>
+          console.warn("Firestore delete notice:", e)
+        );
+      }
 
       showToast(`Dynamic QR Code "${label}" deleted.`);
       fetchRedirects();
@@ -1072,14 +1166,25 @@ export default function App() {
                   </div>
 
                   {currentUser && (
-                    <button
-                      onClick={handleLogout}
-                      className="px-3.5 py-2 border rounded-xl text-xs font-semibold transition text-rose-500 hover:text-rose-400 border-rose-500/20 hover:bg-rose-500/10 flex items-center gap-1.5 shrink-0"
-                      title="Sign Out"
-                    >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Sign Out</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <div className={`px-3 py-1.5 border rounded-xl flex items-center gap-2 text-xs font-semibold ${activeTheme.isDark ? 'bg-slate-900/80 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-700 shadow-sm'}`}>
+                        <div className="w-6 h-6 rounded-full bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-[10px]">
+                          {currentUser.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex flex-col text-left">
+                          <span className="font-bold leading-none">{currentUser.name}</span>
+                          <span className="text-[10px] text-slate-400 leading-tight">{currentUser.email}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleLogout}
+                        className="px-3.5 py-2 border rounded-xl text-xs font-semibold transition text-rose-500 hover:text-rose-400 border-rose-500/20 hover:bg-rose-500/10 flex items-center gap-1.5 shrink-0"
+                        title="Sign Out"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

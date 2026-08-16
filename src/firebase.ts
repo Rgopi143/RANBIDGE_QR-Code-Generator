@@ -3,10 +3,12 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // Your web app's Firebase configuration using Environment Variables
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDhYxKm_OxMOY9FQPLeITgw6s7Uv4bwkT0",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "ranbidge-qr-generator.firebaseapp.com",
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "ranbidge-qr-generator",
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "ranbidge-qr-generator.firebasestorage.app",
@@ -17,4 +19,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
 export const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
+

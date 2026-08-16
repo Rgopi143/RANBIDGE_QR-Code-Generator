@@ -1,4 +1,30 @@
 {
+  "users": [
+    {
+      "id": "demo-admin",
+      "name": "Ranbidge Admin",
+      "email": "admin@ranbidge.com",
+      "role": "System Administrator",
+      "status": "active",
+      "createdAt": "2026-07-09T19:00:00.000Z"
+    },
+    {
+      "id": "demo-dev",
+      "name": "Alex Rivera",
+      "email": "alex.dev@ranbidge.com",
+      "role": "Lead Engineer",
+      "status": "active",
+      "createdAt": "2026-07-09T19:00:00.000Z"
+    },
+    {
+      "id": "demo-mkt",
+      "name": "Sarah Jenkins",
+      "email": "sarah.mkt@ranbidge.com",
+      "role": "Marketing Director",
+      "status": "active",
+      "createdAt": "2026-07-09T19:00:00.000Z"
+    }
+  ],
   "redirects": [
     {
       "id": "KCyEm7",
@@ -23,3 +49,4 @@
     }
   ]
 }
+

@@ -162,10 +162,11 @@ export default function App() {
   // Filter states
   const [selectedTagFilter, setSelectedTagFilter] = useState("all");
 
-  // Auth & View Router states
+  // Auth & View Router states (Session Timeout: session expires on closing site/tab)
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(() => {
     try {
-      const savedUser = localStorage.getItem("qr-user");
+      localStorage.removeItem("qr-user"); // Clean legacy persistent storage
+      const savedUser = sessionStorage.getItem("qr-user");
       return savedUser ? JSON.parse(savedUser) : null;
     } catch (e) {
       return null;
@@ -173,7 +174,7 @@ export default function App() {
   });
   const [currentView, setCurrentView] = useState<"landing" | "studio">(() => {
     try {
-      const savedUser = localStorage.getItem("qr-user");
+      const savedUser = sessionStorage.getItem("qr-user");
       return savedUser ? "studio" : "landing";
     } catch (e) {
       return "landing";
@@ -189,7 +190,8 @@ export default function App() {
 
   const handleLoginSuccess = (user: { name: string; email: string }) => {
     setCurrentUser(user);
-    localStorage.setItem("qr-user", JSON.stringify(user));
+    sessionStorage.setItem("qr-user", JSON.stringify(user));
+    localStorage.removeItem("qr-user");
     setAuthModalOpen(false);
     setCurrentView("studio");
     setActiveTab("dashboard");
@@ -198,6 +200,7 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    sessionStorage.removeItem("qr-user");
     localStorage.removeItem("qr-user");
     setCurrentView("landing");
     showToast("Signed out successfully.");

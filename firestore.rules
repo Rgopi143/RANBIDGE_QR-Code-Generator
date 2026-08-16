@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Dynamic Redirects & Scans (Publicly readable for scanner redirection)
+    match /redirects/{redirectId} {
+      allow read: if true;
+      allow write: if true; // Set to `if request.auth != null;` when enforcing Auth
+    }
+
+    // 2. User Profiles
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // 3. Fallback for all other collections
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
