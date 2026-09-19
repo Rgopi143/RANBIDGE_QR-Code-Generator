@@ -17,13 +17,15 @@ import {
   Play,
   CreditCard,
   Phone,
+  Pin,
+  UserPlus,
 } from "lucide-react";
 import { ThemeConfig } from "../types";
 import QRPreview from "./QRPreview";
 
 interface LandingPageProps {
   onOpenDashboard: () => void;
-  onOpenAuth: (mode?: "login" | "signup") => void;
+  onOpenAuth: (mode?: "login" | "signup" | "pin") => void;
   activeTheme: ThemeConfig;
 }
 
@@ -130,26 +132,43 @@ export default function LandingPage({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2"
+          className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
         >
-          <button
-            onClick={() => onOpenAuth("login")}
-            className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-2xl text-base shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 group"
-          >
-            <span>Launch QR Studio</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
+          {/* Sign In to Studio Button + Logo-only Create New Account Button Group */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => onOpenAuth("login")}
+              className="flex-1 sm:flex-initial px-7 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-2xl text-base shadow-xl shadow-indigo-600/30 hover:shadow-indigo-600/50 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 group"
+            >
+              <span>Sign In to Studio</span>
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
 
+            {/* Create Account Logo-only button moved to right side of Sign In */}
+            <button
+              onClick={() => onOpenAuth("signup")}
+              title="Create New Account"
+              className={`p-4 rounded-2xl border font-bold text-base transition flex items-center justify-center shrink-0 ${
+                activeTheme.isDark
+                  ? "bg-slate-900/90 hover:bg-slate-800 border-indigo-500/40 text-indigo-400 hover:text-indigo-200"
+                  : "bg-white hover:bg-slate-50 border-indigo-200 text-indigo-600 hover:text-indigo-800"
+              } shadow-lg hover:scale-105 active:scale-95`}
+            >
+              <UserPlus className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* PIN Access Button at the original Create Account slot */}
           <button
-            onClick={() => onOpenAuth("login")}
+            onClick={() => onOpenAuth("pin")}
             className={`w-full sm:w-auto px-7 py-4 rounded-2xl border font-semibold text-base transition flex items-center justify-center gap-2 ${
               activeTheme.isDark
-                ? "bg-slate-900/80 hover:bg-slate-800 border-slate-700 text-slate-200"
-                : "bg-white hover:bg-slate-50 border-slate-200 text-slate-800"
-            }`}
+                ? "bg-slate-900/80 hover:bg-slate-800 border-amber-500/40 text-amber-300 hover:text-amber-200"
+                : "bg-white hover:bg-slate-50 border-amber-300 text-amber-700 hover:text-amber-900"
+            } shadow-md hover:scale-[1.02]`}
           >
-            <Lock className="w-4 h-4 text-indigo-400" />
-            <span>Create Free Account</span>
+            <Pin className="w-4 h-4 text-amber-400" />
+            <span>PIN Quick Access</span>
           </button>
         </motion.div>
 
@@ -400,18 +419,28 @@ export default function LandingPage({
             <p className="text-sm sm:text-base text-indigo-100/90 leading-relaxed">
               Start creating permanent trackable QR codes in seconds. Update targets anytime without reprinting.
             </p>
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => onOpenAuth("login")}
+                  className="flex-1 sm:flex-initial px-8 py-4 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-2xl text-base shadow-xl transition transform hover:-translate-y-0.5"
+                >
+                  Launch QR Studio Dashboard
+                </button>
+                <button
+                  onClick={() => onOpenAuth("signup")}
+                  title="Create New Account"
+                  className="p-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded-2xl text-base border border-white/30 transition shrink-0 hover:scale-105 active:scale-95"
+                >
+                  <UserPlus className="w-5 h-5" />
+                </button>
+              </div>
               <button
-                onClick={() => onOpenAuth("login")}
-                className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-100 text-slate-900 font-bold rounded-2xl text-base shadow-xl transition transform hover:-translate-y-0.5"
+                onClick={() => onOpenAuth("pin")}
+                className="w-full sm:w-auto px-7 py-4 bg-black/25 hover:bg-black/35 text-amber-300 font-semibold rounded-2xl text-base border border-amber-400/30 transition flex items-center justify-center gap-2"
               >
-                Launch QR Studio Dashboard
-              </button>
-              <button
-                onClick={() => onOpenAuth("login")}
-                className="w-full sm:w-auto px-7 py-4 bg-black/20 hover:bg-black/30 text-white font-semibold rounded-2xl text-base border border-white/20 transition"
-              >
-                Sign In / Register
+                <Pin className="w-4 h-4 text-amber-300" />
+                <span>PIN Quick Access</span>
               </button>
             </div>
           </div>

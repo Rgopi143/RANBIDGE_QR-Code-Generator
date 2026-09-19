@@ -53,6 +53,8 @@ import {
   Lock,
   Unlock,
   Landmark,
+  Pin,
+  UserPlus,
 } from "lucide-react";
 
 export const buildPaymentUrl = (
@@ -289,7 +291,7 @@ export default function App() {
   });
   const [activeTab, setActiveTab] = useState<"dashboard" | "create">("dashboard");
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
+  const [authModalMode, setAuthModalMode] = useState<"login" | "signup" | "pin">("login");
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -325,7 +327,7 @@ export default function App() {
     showToast("Signed out successfully.");
   };
 
-  const openAuth = (mode: "login" | "signup" = "login") => {
+  const openAuth = (mode: "login" | "signup" | "pin" = "login") => {
     setAuthModalMode(mode);
     setAuthModalOpen(true);
   };
@@ -1198,6 +1200,45 @@ export default function App() {
               <span className={`font-display font-bold text-xl sm:text-2xl md:text-3xl ${activeTheme.headingText}`}>
                 RANBIDGE <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">QR Studio</span>
               </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* PIN Button at original position */}
+              <button
+                onClick={() => openAuth("pin")}
+                className={`hidden xs:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${
+                  activeTheme.isDark
+                    ? "bg-slate-900/80 border-amber-500/40 text-amber-300 hover:bg-slate-800"
+                    : "bg-white border-amber-300 text-amber-800 hover:bg-slate-50"
+                }`}
+              >
+                <Pin className="w-3.5 h-3.5 text-amber-400" />
+                <span>PIN Sign In</span>
+              </button>
+
+              {/* Sign In to Studio + Logo-Only Create Account Button Group */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => openAuth("login")}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow transition flex items-center gap-1.5"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Sign In to Studio</span>
+                </button>
+
+                {/* Display ONLY the logo of Create New Account on the right side */}
+                <button
+                  onClick={() => openAuth("signup")}
+                  title="Create New Account"
+                  className={`p-2 rounded-xl border transition flex items-center justify-center shrink-0 ${
+                    activeTheme.isDark
+                      ? "bg-slate-900 border-indigo-500/40 text-indigo-300 hover:text-white hover:bg-slate-800"
+                      : "bg-white border-indigo-200 text-indigo-600 hover:text-indigo-800 hover:bg-slate-50"
+                  }`}
+                >
+                  <UserPlus className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </nav>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Lock, Mail, User, Eye, EyeOff, Sparkles, ArrowRight, Check, Database, ShieldCheck } from "lucide-react";
+import { Lock, Mail, User, Eye, EyeOff, Sparkles, ArrowRight, Check, Database, ShieldCheck, Pin, UserPlus, KeyRound } from "lucide-react";
 import { ThemeConfig } from "../types";
 
 interface AuthModalProps {
@@ -8,7 +8,7 @@ interface AuthModalProps {
   onClose: () => void;
   onLoginSuccess: (user: { name: string; email: string }) => void;
   activeTheme: ThemeConfig;
-  initialMode?: "login" | "signup";
+  initialMode?: "login" | "signup" | "pin";
 }
 
 export const DEMO_ACCOUNTS = [
@@ -51,16 +51,23 @@ export default function AuthModal({
   activeTheme,
   initialMode = "login",
 }: AuthModalProps) {
-  const [mode, setMode] = useState<"login" | "signup">(initialMode);
+  const [mode, setMode] = useState<"login" | "signup" | "pin">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [pinCode, setPinCode] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [successUser, setSuccessUser] = useState<{ name: string; email: string } | null>(null);
-  const [dbChecked, setDbChecked] = useState(true);
+  const [showGuestSuggestion, setShowGuestSuggestion] = useState(false);
+
+  useEffect(() => {
+    setMode(initialMode);
+    setError(null);
+    setShowGuestSuggestion(false);
+  }, [initialMode]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -79,6 +86,34 @@ export default function AuthModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setShowGuestSuggestion(false);
+
+    if (mode === "pin") {
+      const cleanPin = pinCode.trim();
+      if (!cleanPin) {
+        setError("Please enter the Security PIN.");
+        return;
+      }
+
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+        if (cleanPin === "8247") {
+          const user = { name: "Ranbidge Admin", email: "admin@ranbidge.com" };
+          setSuccessUser(user);
+          setIsSuccess(true);
+
+          setTimeout(() => {
+            setIsSuccess(false);
+            onLoginSuccess(user);
+          }, 1400);
+        } else {
+          setError("Incorrect Security PIN! Only PIN 8247 opens the Admin Role.");
+          setShowGuestSuggestion(true);
+        }
+      }, 450);
+      return;
+    }
 
     if (!email.trim() || !password.trim()) {
       setError("Please fill in all required fields.");
@@ -157,12 +192,14 @@ export default function AuthModal({
             </div>
 
             <h3 className="text-2xl font-display font-bold tracking-tight text-slate-900">
-              {mode === "login" ? "Welcome Back!" : "Create Studio Account"}
+              {mode === "pin" ? "PIN Quick Access" : mode === "login" ? "Welcome Back!" : "Create Studio Account"}
             </h3>
             <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto font-medium">
-              {mode === "login"
-                ? "Sign in to manage your permanent dynamic QR codes & analytics."
-                : "Join Ranbidge QR Studio to start generating dynamic trackable links."}
+              {mode === "pin"
+                ? "Enter security PIN code for instant studio verification."
+                : mode === "login"
+                  ? "Sign in to manage your permanent dynamic QR codes & analytics."
+                  : "Join Ranbidge QR Studio to start generating dynamic trackable links."}
             </p>
 
             {/* DB Status Badge */}
@@ -241,162 +278,169 @@ export default function AuthModal({
               </motion.div>
             ) : (
               <>
-                {/* 3 Quick Demo Accounts Card */}
-                <div className={`p-3.5 rounded-2xl border ${activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                      3 Quick Demo Logins (DB Test)
-                    </span>
-                    <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1 font-semibold">
-                      <ShieldCheck className="w-3 h-3" /> DB Verified
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {DEMO_ACCOUNTS.map((acc) => (
-                      <button
-                        key={acc.id}
-                        type="button"
-                        onClick={() => handleDemoQuickLogin(acc)}
-                        className={`group text-left p-2.5 rounded-xl border transition-all duration-200 hover:scale-[1.02] flex flex-col justify-between ${
-                          activeTheme.isDark
-                            ? 'bg-slate-800/80 border-slate-700 hover:border-indigo-500/60'
-                            : 'bg-white border-slate-200 hover:border-indigo-400 shadow-sm'
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm">{acc.icon}</span>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${acc.bgColor}`}>
-                              {acc.badge}
-                            </span>
-                          </div>
-                          <p className={`text-xs font-bold leading-snug line-clamp-1 ${activeTheme.headingText}`}>
-                            {acc.name}
-                          </p>
-                          <p className={`text-[10px] truncate ${activeTheme.secondaryText}`}>
-                            {acc.email}
-                          </p>
-                        </div>
-                        <div className="mt-2 text-[10px] text-indigo-400 group-hover:underline font-semibold flex items-center gap-0.5">
-                          <span>Quick Sign In</span>
-                          <ArrowRight className="w-2.5 h-2.5" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="relative flex items-center justify-center my-1">
-                  <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
-                  <span className={`absolute px-3 text-[10px] font-semibold uppercase tracking-wider ${activeTheme.isDark ? 'bg-slate-900 text-slate-500' : 'bg-white text-slate-400'}`}>
-                    Or Custom Sign In
-                  </span>
-                </div>
-
-                {/* Mode Segmented Controls */}
+                {/* Mode Segmented Controls (PIN button replaces original Create Account slot) */}
                 <div className={`grid grid-cols-2 p-1 rounded-xl border ${activeTheme.isDark ? 'bg-slate-900/80 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
                   <button
                     type="button"
                     onClick={() => { setMode("login"); setError(null); }}
-                    className={`py-2 text-xs font-semibold rounded-lg transition ${
+                    className={`py-2 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
                       mode === "login" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
                     }`}
                   >
-                    Sign In
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Sign In</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setMode("signup"); setError(null); }}
-                    className={`py-2 text-xs font-semibold rounded-lg transition ${
-                      mode === "signup" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
+                    onClick={() => { setMode("pin"); setError(null); }}
+                    className={`py-2 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                      mode === "pin" ? activeTheme.buttonActive : `${activeTheme.secondaryText} hover:text-slate-200`
                     }`}
                   >
-                    Create Account
+                    <Pin className="w-3.5 h-3.5 text-amber-400" />
+                    <span>PIN Sign In</span>
                   </button>
                 </div>
 
                 {error && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl flex items-center gap-2">
-                    <span>⚠️ {error}</span>
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs p-3 rounded-xl space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span>⚠️ {error}</span>
+                    </div>
+                    {showGuestSuggestion && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode("signup");
+                          setFullName("Guest User");
+                          setError(null);
+                          setShowGuestSuggestion(false);
+                        }}
+                        className="w-full mt-1 py-2 px-3 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm"
+                      >
+                        <UserPlus className="w-4 h-4 text-amber-400" />
+                        <span>Register New Account as Guest User</span>
+                      </button>
+                    )}
                   </motion.div>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-3.5">
-                  {mode === "signup" && (
-                    <div className="space-y-1.5">
-                      <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Full Name</label>
+                  {mode === "pin" ? (
+                    <div className="space-y-2">
+                      <label className={`text-xs font-semibold uppercase tracking-wider flex items-center justify-between ${activeTheme.text}`}>
+                        <span>Enter Security PIN</span>
+                        <span className="text-[10px] text-amber-400 font-bold">Quick PIN Access</span>
+                      </label>
                       <div className="relative">
-                        <User className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
+                        <Pin className="absolute left-3.5 top-3 w-4 h-4 text-amber-400" />
                         <input
-                          type="text"
+                          type="password"
+                          maxLength={6}
                           required
-                          value={fullName}
-                          onChange={(e) => setFullName(e.target.value)}
-                          placeholder="Jane Doe"
-                          className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                          value={pinCode}
+                          onChange={(e) => setPinCode(e.target.value)}
+                          placeholder="Enter Security PIN"
+                          className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-amber-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
                         />
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      {mode === "signup" && (
+                        <div className="space-y-1.5">
+                          <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Full Name</label>
+                          <div className="relative">
+                            <User className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
+                            <input
+                              type="text"
+                              required
+                              value={fullName}
+                              onChange={(e) => setFullName(e.target.value)}
+                              placeholder="Jane Doe"
+                              className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Email Address</label>
+                        <div className="relative">
+                          <Mail className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
+                          <input
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="admin@ranbidge.com"
+                            className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Password</label>
+                          {mode === "login" && (
+                            <button type="button" className="text-[11px] text-indigo-400 hover:underline">Forgot password?</button>
+                          )}
+                        </div>
+                        <div className="relative">
+                          <Lock className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
+                          <input
+                            type={showPassword ? "text" : "password"}
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className={`w-full rounded-xl pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className={`absolute right-3.5 top-3 transition-colors ${activeTheme.secondaryText} hover:text-white`}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   )}
 
-                  <div className="space-y-1.5">
-                    <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Email Address</label>
-                    <div className="relative">
-                      <Mail className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="admin@ranbidge.com"
-                        className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Password</label>
-                      {mode === "login" && (
-                        <button type="button" className="text-[11px] text-indigo-400 hover:underline">Forgot password?</button>
+                  {/* Submit Button + Logo-Only Create Account Button Group */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center gap-2"
+                    >
+                      {loading ? (
+                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          {mode === "pin" ? "PIN Verify & Enter Studio" : mode === "login" ? "Sign In to Studio" : "Create Studio Account"}
+                          <ArrowRight className="w-4 h-4" />
+                        </>
                       )}
-                    </div>
-                    <div className="relative">
-                      <Lock className={`absolute left-3.5 top-3 w-4 h-4 ${activeTheme.secondaryText}`} />
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className={`w-full rounded-xl pl-10 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className={`absolute right-3.5 top-3 transition-colors ${activeTheme.secondaryText} hover:text-white`}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
+                    </button>
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-lg shadow-indigo-600/25 transition flex items-center justify-center gap-2"
-                  >
-                    {loading ? (
-                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        {mode === "login" ? "Sign In to Studio" : "Create Studio Account"}
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
+                    {/* Display ONLY the logo icon of Create New Account to the right side of Sign In button */}
+                    <button
+                      type="button"
+                      onClick={() => { setMode("signup"); setError(null); }}
+                      title="Create New Account"
+                      className={`p-3 rounded-xl border transition flex items-center justify-center shrink-0 ${
+                        mode === "signup"
+                          ? "bg-indigo-600 text-white border-indigo-500 shadow-md ring-2 ring-indigo-400/50"
+                          : activeTheme.isDark
+                            ? "bg-slate-900 border-slate-700 text-indigo-400 hover:text-white hover:bg-slate-800"
+                            : "bg-white border-slate-300 text-indigo-600 hover:text-indigo-800 hover:bg-slate-50"
+                      }`}
+                    >
+                      <UserPlus className="w-5 h-5" />
+                    </button>
+                  </div>
                 </form>
               </>
             )}
