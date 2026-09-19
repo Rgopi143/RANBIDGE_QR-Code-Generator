@@ -1,5 +1,0 @@
-services:
-  - type: static
-    name: ranbidge-qr-code-generator
-    buildCommand: npm run build
-    publishPath: dist

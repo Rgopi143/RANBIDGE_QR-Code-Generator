@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   Lock,
   Play,
+  CreditCard,
+  Phone,
 } from "lucide-react";
 import { ThemeConfig } from "../types";
 import QRPreview from "./QRPreview";
@@ -30,7 +32,11 @@ export default function LandingPage({
   onOpenAuth,
   activeTheme,
 }: LandingPageProps) {
+  const [demoType, setDemoType] = useState<"url" | "payment">("url");
   const [demoUrl, setDemoUrl] = useState("https://ranbidge-solutions-private-limited.onrender.com/");
+  const [demoPhone, setDemoPhone] = useState("9876543210");
+  const [demoPayee, setDemoPayee] = useState("RANBIDGE Solutions");
+  const [demoAmount, setDemoAmount] = useState("100");
 
   const features = [
     {
@@ -185,24 +191,91 @@ export default function LandingPage({
             <h2 className={`text-2xl sm:text-3xl font-display font-bold ${activeTheme.headingText}`}>
               Try Live QR Generation Right Now
             </h2>
-            <p className={`text-xs sm:text-sm ${activeTheme.secondaryText}`}>Type any website URL below to render a live vector QR code instant preview.</p>
+            <p className={`text-xs sm:text-sm ${activeTheme.secondaryText}`}>Select target purpose below and enter a Website URL or Payment Mobile Number to test instant live rendering.</p>
+          </div>
+
+          {/* Type Selector Pills */}
+          <div className="flex justify-center mb-6">
+            <div className={`inline-flex gap-1 p-1 rounded-2xl border ${activeTheme.isDark ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+              <button
+                type="button"
+                onClick={() => setDemoType("url")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                  demoType === "url" ? "bg-indigo-600 text-white shadow-md" : `${activeTheme.secondaryText} hover:text-white`
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5" />
+                <span>Web URL</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDemoType("payment")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+                  demoType === "payment" ? "bg-indigo-600 text-white shadow-md" : `${activeTheme.secondaryText} hover:text-white`
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Payment QR (Mobile Number / UPI)</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             <div className="md:col-span-7 space-y-4">
-              <div className="space-y-1.5">
-                <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Target Destination URL</label>
-                <div className="relative">
-                  <Globe className={`absolute left-4 top-3.5 w-4 h-4 ${activeTheme.secondaryText}`} />
-                  <input
-                    type="url"
-                    value={demoUrl}
-                    onChange={(e) => setDemoUrl(e.target.value)}
-                    placeholder="https://yourwebsite.com"
-                    className={`w-full rounded-2xl pl-11 pr-4 py-3 text-sm font-mono border focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
-                  />
+              {demoType === "url" ? (
+                <div className="space-y-1.5">
+                  <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Target Destination URL</label>
+                  <div className="relative">
+                    <Globe className={`absolute left-4 top-3.5 w-4 h-4 ${activeTheme.secondaryText}`} />
+                    <input
+                      type="url"
+                      value={demoUrl}
+                      onChange={(e) => setDemoUrl(e.target.value)}
+                      placeholder="https://yourwebsite.com"
+                      className={`w-full rounded-2xl pl-11 pr-4 py-3 text-sm font-mono border focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-3 p-4 rounded-2xl border bg-indigo-500/5 border-indigo-500/20">
+                  <div className="space-y-1">
+                    <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>Mobile Phone Number or UPI ID</label>
+                    <div className="relative">
+                      <Phone className={`absolute left-4 top-3.5 w-4 h-4 ${activeTheme.secondaryText}`} />
+                      <input
+                        type="text"
+                        value={demoPhone}
+                        onChange={(e) => setDemoPhone(e.target.value)}
+                        placeholder="e.g. 9876543210"
+                        className={`w-full rounded-xl pl-11 pr-4 py-2.5 text-sm font-mono border focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className={`text-[10px] font-semibold uppercase ${activeTheme.text}`}>Payee Name</label>
+                      <input
+                        type="text"
+                        value={demoPayee}
+                        onChange={(e) => setDemoPayee(e.target.value)}
+                        placeholder="Store Name"
+                        className={`w-full rounded-lg px-3 py-1.5 text-xs border focus:outline-none ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className={`text-[10px] font-semibold uppercase ${activeTheme.text}`}>Amount (₹)</label>
+                      <input
+                        type="number"
+                        value={demoAmount}
+                        onChange={(e) => setDemoAmount(e.target.value)}
+                        placeholder="100"
+                        className={`w-full rounded-lg px-3 py-1.5 text-xs border focus:outline-none ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2 text-xs text-slate-400">
                 <p className="flex items-center gap-2">
@@ -227,12 +300,18 @@ export default function LandingPage({
               <div className="bg-white p-3 rounded-2xl shadow-xl border border-slate-200 aspect-square w-48 h-48 flex items-center justify-center">
                 <QRPreview
                   canvasId="landing-demo-canvas"
-                  url={demoUrl || "https://ranbidge-solutions-private-limited.onrender.com/"}
+                  url={
+                    demoType === "url"
+                      ? demoUrl || "https://ranbidge-solutions-private-limited.onrender.com/"
+                      : `upi://pay?pa=${encodeURIComponent(demoPhone.includes("@") ? demoPhone : demoPhone + "@upi")}&pn=${encodeURIComponent(demoPayee)}&am=${encodeURIComponent(demoAmount)}&cu=INR`
+                  }
                   className="w-full h-full object-contain"
                 />
               </div>
               <span className={`text-[11px] font-mono mt-3 truncate max-w-full px-2 ${activeTheme.secondaryText}`}>
-                {demoUrl || "https://ranbidge-solutions-private-limited.onrender.com/"}
+                {demoType === "url"
+                  ? demoUrl || "https://ranbidge-solutions-private-limited.onrender.com/"
+                  : `upi://pay?pa=${demoPhone.includes("@") ? demoPhone : demoPhone + "@upi"}&pn=${demoPayee}&am=${demoAmount}`}
               </span>
             </div>
           </div>

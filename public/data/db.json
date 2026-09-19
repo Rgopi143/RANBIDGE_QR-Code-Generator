@@ -44,8 +44,18 @@
           "os": "Windows",
           "referrer": "Direct / QR Scanner"
         }
-      ],
-      "tags": []
+      ]
+    },
+    {
+      "id": "bank-490",
+      "name": "Bank Transfer ₹490 (Acc: 44815120316)",
+      "destinationUrl": "upi://pay?pa=44815120316@SBIN0000884.ifsc.npci&am=490&cu=INR",
+      "createdAt": "2026-09-19T22:59:00.000Z",
+      "updatedAt": "2026-09-19T22:59:00.000Z",
+      "status": "active",
+      "scanCount": 0,
+      "scans": [],
+      "tags": ["Bank Payment", "Fixed Amount"]
     }
   ]
 }

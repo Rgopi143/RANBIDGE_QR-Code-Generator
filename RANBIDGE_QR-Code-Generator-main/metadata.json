@@ -1,6 +1,0 @@
-{
-  "name": "Dynamic QR Code Generator",
-  "description": "Create permanent QR codes and update their destination links at any time, with built-in redirection and scan analytics.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

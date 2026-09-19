@@ -47,7 +47,99 @@ import {
   Github,
   Globe,
   Bell,
+  CreditCard,
+  Phone,
+  IndianRupee,
+  Lock,
+  Unlock,
+  Landmark,
 } from "lucide-react";
+
+export const buildPaymentUrl = (
+  phoneOrVpa: string,
+  handle: string = "@upi",
+  payee: string = "",
+  amount: string = "",
+  note: string = ""
+) => {
+  const trimmed = phoneOrVpa.trim();
+  if (!trimmed) return "";
+
+  let vpa = trimmed;
+  if (!vpa.includes("@")) {
+    vpa = `${vpa}${handle || "@upi"}`;
+  }
+  let url = `upi://pay?pa=${encodeURIComponent(vpa)}`;
+  if (payee.trim()) {
+    url += `&pn=${encodeURIComponent(payee.trim())}`;
+  }
+  if (amount.trim() && !isNaN(Number(amount)) && Number(amount) > 0) {
+    url += `&am=${encodeURIComponent(amount.trim())}&cu=INR`;
+  }
+  if (note.trim()) {
+    url += `&tn=${encodeURIComponent(note.trim())}`;
+  }
+  return url;
+};
+
+export const buildBankAccountPaymentUrl = (
+  accNo: string,
+  ifsc: string,
+  payee: string = "",
+  amount: string = "",
+  note: string = ""
+) => {
+  const cleanAcc = accNo.trim();
+  const cleanIfsc = ifsc.trim().toUpperCase();
+  if (!cleanAcc || !cleanIfsc) return "";
+  const vpa = `${cleanAcc}@${cleanIfsc}.ifsc.npci`;
+  return buildPaymentUrl(vpa, "", payee, amount, note);
+};
+
+export const buildPhoneUrl = (phone: string, type: "call" | "sms" = "call") => {
+  const trimmed = phone.trim();
+  if (!trimmed) return "";
+  return type === "sms" ? `smsto:${trimmed}` : `tel:${trimmed}`;
+};
+
+export const validateTargetUrl = (urlStr: string) => {
+  const trimmed = urlStr.trim();
+  if (!trimmed) throw new Error("Target destination cannot be empty.");
+
+  if (/^(upi|tel|smsto|mailto):/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  let target = trimmed;
+  if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(target)) {
+    target = `https://${target}`;
+  }
+
+  try {
+    new URL(target);
+    return target;
+  } catch (e) {
+    throw new Error("Invalid destination format. Please check the entered URL or payment information.");
+  }
+};
+
+export const getPaymentMoneyDetail = (urlStr: string) => {
+  if (!urlStr.startsWith("upi://pay")) return null;
+  try {
+    const u = new URL(urlStr);
+    const am = u.searchParams.get("am");
+    const pa = u.searchParams.get("pa") || "";
+    const isFixed = Boolean(am && !isNaN(Number(am)) && Number(am) > 0);
+    return {
+      isFixed,
+      amount: am,
+      vpa: pa,
+    };
+  } catch (e) {
+    return null;
+  }
+};
+
 
 export const THEME_PRESETS: Record<string, ThemeConfig> = {
   black: {
@@ -155,6 +247,18 @@ export default function App() {
   // Creation form states
   const [name, setName] = useState("");
   const [destinationUrl, setDestinationUrl] = useState("");
+  const [qrType, setQrType] = useState<"url" | "payment" | "phone">("url");
+  const [paymentTargetMode, setPaymentTargetMode] = useState<"vpa" | "bank">("vpa");
+  const [bankAccNo, setBankAccNo] = useState("");
+  const [bankIfscCode, setBankIfscCode] = useState("");
+  const [amountMode, setAmountMode] = useState<"fixed" | "flexible">("fixed");
+  const [paymentPhone, setPaymentPhone] = useState("");
+  const [paymentHandle, setPaymentHandle] = useState("@upi");
+  const [payeeName, setPayeeName] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentNote, setPaymentNote] = useState("");
+  const [phoneCallType, setPhoneCallType] = useState<"call" | "sms">("call");
+  const [phoneNumberInput, setPhoneNumberInput] = useState("");
   const [createLogoData, setCreateLogoData] = useState<string | null>(null);
   const [showLogoPrompt, setShowLogoPrompt] = useState(false);
   const [customSlug, setCustomSlug] = useState("");
@@ -230,6 +334,18 @@ export default function App() {
   const [editingLink, setEditingLink] = useState<RedirectLink | null>(null);
   const [editUrl, setEditUrl] = useState("");
   const [editName, setEditName] = useState("");
+  const [editQrType, setEditQrType] = useState<"url" | "payment" | "phone">("url");
+  const [editPaymentTargetMode, setEditPaymentTargetMode] = useState<"vpa" | "bank">("vpa");
+  const [editBankAccNo, setEditBankAccNo] = useState("");
+  const [editBankIfscCode, setEditBankIfscCode] = useState("");
+  const [editAmountMode, setEditAmountMode] = useState<"fixed" | "flexible">("fixed");
+  const [editPaymentPhone, setEditPaymentPhone] = useState("");
+  const [editPaymentHandle, setEditPaymentHandle] = useState("@upi");
+  const [editPayeeName, setEditPayeeName] = useState("");
+  const [editPaymentAmount, setEditPaymentAmount] = useState("");
+  const [editPaymentNote, setEditPaymentNote] = useState("");
+  const [editPhoneCallType, setEditPhoneCallType] = useState<"call" | "sms">("call");
+  const [editPhoneNumberInput, setEditPhoneNumberInput] = useState("");
   const [editTags, setEditTags] = useState<string[]>([]);
   const [editTagInput, setEditTagInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -623,7 +739,7 @@ export default function App() {
     showToast("Database (db.json) exported! Copy this to public/data/db.json and commit/push to deploy changes.");
   };
 
-  const submitCreate = async () => {
+  const submitCreate = async (targetOverride?: string) => {
     setIsSubmitting(true);
     try {
       let finalId = customSlug ? customSlug.trim().toLowerCase() : "";
@@ -645,17 +761,14 @@ export default function App() {
         }
       }
 
-      try {
-        new URL(destinationUrl);
-      } catch (e) {
-        throw new Error("Invalid Destination URL. Must include protocol (e.g. https://).");
-      }
+      const targetToValidate = targetOverride || destinationUrl;
+      const validatedTarget = validateTargetUrl(targetToValidate);
 
       const now = new Date().toISOString();
       const newLink: RedirectLink = {
         id: finalId,
         name: name.trim(),
-        destinationUrl: destinationUrl.trim(),
+        destinationUrl: validatedTarget,
         createdAt: now,
         updatedAt: now,
         status: "active",
@@ -682,6 +795,14 @@ export default function App() {
       addNotification("New QR Code Added", `Dynamic QR Code "${newLink.name}" was generated successfully.`, "create");
       setName("");
       setDestinationUrl("");
+      setQrType("url");
+      setBankAccNo("");
+      setBankIfscCode("");
+      setPaymentPhone("");
+      setPayeeName("");
+      setPaymentAmount("");
+      setPaymentNote("");
+      setPhoneNumberInput("");
       setCreateLogoData(null);
       setCustomSlug("");
       setTags([]);
@@ -697,17 +818,55 @@ export default function App() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !destinationUrl.trim()) {
-      showToast("Please provide both a label and a destination URL.", "error");
+
+    if (!name.trim()) {
+      showToast("Please provide a QR Code Label / Name.", "error");
       return;
     }
+
+    let targetToUse = destinationUrl.trim();
+
+    if (qrType === "payment") {
+      const amtToUse = amountMode === "fixed" ? paymentAmount : "";
+      if (paymentTargetMode === "bank") {
+        if (!bankAccNo.trim() || !bankIfscCode.trim()) {
+          showToast("Please provide both Bank Account Number and Bank IFSC Code.", "error");
+          return;
+        }
+        targetToUse = buildBankAccountPaymentUrl(bankAccNo, bankIfscCode, payeeName, amtToUse, paymentNote);
+      } else {
+        if (!paymentPhone.trim()) {
+          showToast("Please enter a Mobile Phone Number or UPI ID.", "error");
+          return;
+        }
+        targetToUse = buildPaymentUrl(paymentPhone, paymentHandle, payeeName, amtToUse, paymentNote);
+      }
+    } else if (qrType === "phone") {
+      if (!phoneNumberInput.trim()) {
+        showToast("Please enter a Phone Number.", "error");
+        return;
+      }
+      targetToUse = buildPhoneUrl(phoneNumberInput, phoneCallType);
+    } else {
+      if (!targetToUse) {
+        showToast("Please provide a Destination URL.", "error");
+        return;
+      }
+    }
+
+    if (!targetToUse) {
+      showToast("Please provide a valid destination target.", "error");
+      return;
+    }
+
+    setDestinationUrl(targetToUse);
 
     if (!createLogoData && !showLogoPrompt) {
       setShowLogoPrompt(true);
       return;
     }
 
-    submitCreate();
+    submitCreate(targetToUse);
   };
 
   const handleStatusToggle = async (link: RedirectLink) => {
@@ -749,11 +908,36 @@ export default function App() {
     if (!editingLink) return;
 
     try {
-      try {
-        new URL(editUrl);
-      } catch (e) {
-        throw new Error("Invalid Destination URL. Must include protocol (e.g. https://).");
+      if (!editName.trim()) {
+        throw new Error("Please provide a QR Code Display Label.");
       }
+
+      let finalEditUrl = editUrl.trim();
+      if (editQrType === "payment") {
+        const amtToUse = editAmountMode === "fixed" ? editPaymentAmount : "";
+        if (editPaymentTargetMode === "bank") {
+          if (!editBankAccNo.trim() || !editBankIfscCode.trim()) {
+            throw new Error("Please provide both Bank Account Number and Bank IFSC Code.");
+          }
+          finalEditUrl = buildBankAccountPaymentUrl(editBankAccNo, editBankIfscCode, editPayeeName, amtToUse, editPaymentNote);
+        } else {
+          if (!editPaymentPhone.trim()) {
+            throw new Error("Please provide a Mobile Phone Number or UPI ID.");
+          }
+          finalEditUrl = buildPaymentUrl(editPaymentPhone, editPaymentHandle, editPayeeName, amtToUse, editPaymentNote);
+        }
+      } else if (editQrType === "phone") {
+        if (!editPhoneNumberInput.trim()) {
+          throw new Error("Please provide a Phone Number.");
+        }
+        finalEditUrl = buildPhoneUrl(editPhoneNumberInput, editPhoneCallType);
+      } else {
+        if (!finalEditUrl) {
+          throw new Error("Please provide a Destination URL.");
+        }
+      }
+
+      const validatedTarget = validateTargetUrl(finalEditUrl);
 
       const saved = localStorage.getItem("qr-redirects");
       let localLinks: RedirectLink[] = saved ? JSON.parse(saved) : [];
@@ -761,7 +945,7 @@ export default function App() {
 
       const updatedFields = {
         name: editName.trim(),
-        destinationUrl: editUrl.trim(),
+        destinationUrl: validatedTarget,
         tags: editTags,
         qrConfig: editLogoData ? { logoType: "upload" as const, customLogoUrl: editLogoData, logoSize: 24, logoShape: "rounded" as const, logoPadding: 4 } : undefined,
         updatedAt: new Date().toISOString(),
@@ -1297,21 +1481,506 @@ export default function App() {
                         <p className={`text-xs transition-colors duration-300 ${activeTheme.secondaryText}`}>Used strictly for management and reporting in your dashboard.</p>
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${activeTheme.text}`}>Destination target URL</label>
-                        <div className="relative">
-                          <Link2 className={`absolute left-4 top-3.5 w-4 h-4 transition-colors duration-300 ${activeTheme.secondaryText}`} />
-                          <input
-                            type="url"
-                            required
-                            value={destinationUrl}
-                            onChange={(e) => setDestinationUrl(e.target.value)}
-                            placeholder="https://example.com/your-target-file.pdf"
-                            className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/45 transition placeholder-slate-500 font-mono border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
-                          />
+                      {/* Purpose Mode Selector */}
+                      <div className="space-y-2">
+                        <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${activeTheme.text}`}>
+                          Select QR Code Target Type
+                        </label>
+                        <div className={`grid grid-cols-3 gap-2 p-1.5 rounded-xl border transition-all duration-300 ${
+                          activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100 border-slate-200'
+                        }`}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQrType("url");
+                            }}
+                            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                              qrType === "url"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : `${activeTheme.secondaryText} hover:text-white`
+                            }`}
+                          >
+                            <Globe className="w-4 h-4 shrink-0" />
+                            <span>Web URL</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQrType("payment");
+                            }}
+                            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                              qrType === "payment"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : `${activeTheme.secondaryText} hover:text-white`
+                            }`}
+                          >
+                            <CreditCard className="w-4 h-4 shrink-0" />
+                            <span>Payment / UPI</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQrType("phone");
+                            }}
+                            className={`flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg text-xs font-bold transition-all ${
+                              qrType === "phone"
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                                : `${activeTheme.secondaryText} hover:text-white`
+                            }`}
+                          >
+                            <Phone className="w-4 h-4 shrink-0" />
+                            <span>Phone / SMS</span>
+                          </button>
                         </div>
-                        <p className={`text-xs transition-colors duration-300 ${activeTheme.secondaryText}`}>Where scanners will instantly land. You can replace this target URL at any time later.</p>
                       </div>
+
+                      {/* URL Mode */}
+                      {qrType === "url" && (
+                        <div className="space-y-1.5">
+                          <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${activeTheme.text}`}>Destination target URL</label>
+                          <div className="relative">
+                            <Link2 className={`absolute left-4 top-3.5 w-4 h-4 transition-colors duration-300 ${activeTheme.secondaryText}`} />
+                            <input
+                              type="text"
+                              required
+                              value={destinationUrl}
+                              onChange={(e) => setDestinationUrl(e.target.value)}
+                              placeholder="https://example.com/your-target-file.pdf"
+                              className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/45 transition placeholder-slate-500 font-mono border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                            />
+                          </div>
+                          <p className={`text-xs transition-colors duration-300 ${activeTheme.secondaryText}`}>Where scanners will instantly land. You can replace this target URL at any time later.</p>
+                        </div>
+                      )}
+
+                      {/* Payment Mode */}
+                      {qrType === "payment" && (
+                        <div className={`space-y-4 p-4 sm:p-5 rounded-xl border transition-all duration-300 ${
+                          activeTheme.isDark ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-indigo-50/50 border-indigo-200'
+                        }`}>
+                          <div className="flex items-center justify-between border-b pb-3 border-indigo-500/20">
+                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wide flex items-center gap-1.5">
+                              <CreditCard className="w-4 h-4" /> UPI & Payment QR Configurator
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-400">GPay • PhonePe • Paytm • BHIM • UPI</span>
+                          </div>
+
+                          {/* Payment Target Sub-Mode Selector */}
+                          <div className="space-y-1.5">
+                            <label className={`text-[11px] font-semibold uppercase tracking-wider ${activeTheme.secondaryText}`}>
+                              Payment Destination Type
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPaymentTargetMode("vpa");
+                                  const generated = buildPaymentUrl(paymentPhone, paymentHandle, payeeName, paymentAmount, paymentNote);
+                                  setDestinationUrl(generated);
+                                }}
+                                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition border ${
+                                  paymentTargetMode === "vpa"
+                                    ? "bg-indigo-600 text-white border-indigo-500 shadow-md"
+                                    : activeTheme.isDark
+                                      ? "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800"
+                                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                }`}
+                              >
+                                <Phone className="w-3.5 h-3.5" />
+                                <span>Mobile Number / UPI VPA</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPaymentTargetMode("bank");
+                                  const generated = buildBankAccountPaymentUrl(bankAccNo, bankIfscCode, payeeName, paymentAmount, paymentNote);
+                                  setDestinationUrl(generated);
+                                }}
+                                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition border ${
+                                  paymentTargetMode === "bank"
+                                    ? "bg-indigo-600 text-white border-indigo-500 shadow-md"
+                                    : activeTheme.isDark
+                                      ? "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800"
+                                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                }`}
+                              >
+                                <Landmark className="w-3.5 h-3.5" />
+                                <span>Bank Account + IFSC</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Mobile Phone / UPI VPA Input Mode */}
+                          {paymentTargetMode === "vpa" ? (
+                            <>
+                              <div className="space-y-1.5">
+                                <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>
+                                  Mobile Phone Number or UPI ID <span className="text-red-400">*</span>
+                                </label>
+                                <div className="relative">
+                                  <Phone className={`absolute left-4 top-3.5 w-4 h-4 ${activeTheme.secondaryText}`} />
+                                  <input
+                                    type="text"
+                                    required
+                                    value={paymentPhone}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setPaymentPhone(val);
+                                      const generated = buildPaymentUrl(val, paymentHandle, payeeName, paymentAmount, paymentNote);
+                                      setDestinationUrl(generated);
+                                    }}
+                                    placeholder="e.g., 9876543210 or yourname@upi"
+                                    className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/45 transition placeholder-slate-500 font-mono border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                                  />
+                                </div>
+                                <p className={`text-[11px] ${activeTheme.secondaryText}`}>
+                                  Enter your 10-digit mobile number (e.g. 9876543210) or full UPI VPA ID.
+                                </p>
+                              </div>
+
+                              {/* Quick UPI Handle selector */}
+                              {!paymentPhone.includes("@") && (
+                                <div className="space-y-1.5">
+                                  <label className={`text-[11px] font-semibold uppercase tracking-wider ${activeTheme.secondaryText}`}>
+                                    Select Provider Handle (For Phone Numbers)
+                                  </label>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                      { label: "@upi (All UPI Apps)", val: "@upi" },
+                                      { label: "@paytm (Paytm)", val: "@paytm" },
+                                      { label: "@ybl (PhonePe)", val: "@ybl" },
+                                      { label: "@okaxis (GPay)", val: "@okaxis" },
+                                      { label: "@ibl (PhonePe)", val: "@ibl" },
+                                      { label: "@sbi (BHIM SBI)", val: "@sbi" },
+                                    ].map((h) => (
+                                      <button
+                                        key={h.val}
+                                        type="button"
+                                        onClick={() => {
+                                          setPaymentHandle(h.val);
+                                          const generated = buildPaymentUrl(paymentPhone, h.val, payeeName, paymentAmount, paymentNote);
+                                          setDestinationUrl(generated);
+                                        }}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition border ${
+                                          paymentHandle === h.val
+                                            ? "bg-indigo-600 text-white border-indigo-500 shadow-sm"
+                                            : activeTheme.isDark
+                                              ? "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800"
+                                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                                        }`}
+                                      >
+                                        {h.label}
+                                      </button>
+                                    ))}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setPaymentTargetMode("bank");
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg text-xs font-mono font-medium transition border bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 flex items-center gap-1"
+                                    >
+                                      <Landmark className="w-3 h-3" />
+                                      🏦 Direct Bank Acc + IFSC
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            /* Direct Bank Account + IFSC Mode */
+                            <div className="space-y-3 p-3.5 rounded-xl border bg-slate-900/40 border-slate-800">
+                              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase">
+                                <Landmark className="w-4 h-4" /> Bank Account Transfer Configuration
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                  <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>
+                                    Bank Account Number <span className="text-red-400">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={bankAccNo}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setBankAccNo(val);
+                                      const generated = buildBankAccountPaymentUrl(val, bankIfscCode, payeeName, paymentAmount, paymentNote);
+                                      setDestinationUrl(generated);
+                                    }}
+                                    placeholder="e.g. 123456789012"
+                                    className={`w-full rounded-xl px-4 py-2.5 text-sm font-mono border focus:outline-none focus:ring-2 focus:ring-indigo-500/45 ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                                  />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>
+                                    Bank IFSC Code <span className="text-red-400">*</span>
+                                  </label>
+                                  <input
+                                    type="text"
+                                    required
+                                    value={bankIfscCode}
+                                    onChange={(e) => {
+                                      const val = e.target.value.toUpperCase();
+                                      setBankIfscCode(val);
+                                      const generated = buildBankAccountPaymentUrl(bankAccNo, val, payeeName, paymentAmount, paymentNote);
+                                      setDestinationUrl(generated);
+                                    }}
+                                    placeholder="e.g. SBIN0001234"
+                                    className={`w-full rounded-xl px-4 py-2.5 text-sm font-mono uppercase border focus:outline-none focus:ring-2 focus:ring-indigo-500/45 ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                                  />
+                                </div>
+                              </div>
+                              <p className={`text-[11px] ${activeTheme.secondaryText}`}>
+                                Formats directly into standard UPI VPA string: <code className="text-indigo-300 font-mono">{bankAccNo || "ACCOUNT"}@{bankIfscCode || "IFSC"}.ifsc.npci</code>
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Money / Payment Amount Type Column */}
+                          <div className="space-y-3 pt-2 border-t border-indigo-500/20">
+                            <div className="flex items-center justify-between">
+                              <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>
+                                Money / Payment Amount Type
+                              </label>
+                              <span className="text-[10px] font-bold uppercase text-indigo-400">Fix Money in QR</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAmountMode("fixed");
+                                  const defaultAmt = paymentAmount || "500";
+                                  setPaymentAmount(defaultAmt);
+                                  const generated = buildPaymentUrl(paymentPhone, paymentHandle, payeeName, defaultAmt, paymentNote);
+                                  setDestinationUrl(generated);
+                                }}
+                                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition border ${
+                                  amountMode === "fixed"
+                                    ? "bg-emerald-600 text-white border-emerald-500 shadow-md"
+                                    : activeTheme.isDark
+                                      ? "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800"
+                                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                }`}
+                              >
+                                <Lock className="w-3.5 h-3.5" />
+                                <span>Fixed Money Amount</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAmountMode("flexible");
+                                  setPaymentAmount("");
+                                  const generated = buildPaymentUrl(paymentPhone, paymentHandle, payeeName, "", paymentNote);
+                                  setDestinationUrl(generated);
+                                }}
+                                className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition border ${
+                                  amountMode === "flexible"
+                                    ? "bg-indigo-600 text-white border-indigo-500 shadow-md"
+                                    : activeTheme.isDark
+                                      ? "bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800"
+                                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                                }`}
+                              >
+                                <Unlock className="w-3.5 h-3.5" />
+                                <span>Flexible Amount</span>
+                              </button>
+                            </div>
+
+                            {amountMode === "fixed" ? (
+                              <div className="space-y-2 pt-1">
+                                <div className="space-y-1">
+                                  <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>
+                                    Fixed Money Amount (₹ INR) <span className="text-red-400">*</span>
+                                  </label>
+                                  <div className="relative">
+                                    <IndianRupee className={`absolute left-4 top-3.5 w-4 h-4 ${activeTheme.secondaryText}`} />
+                                    <input
+                                      type="number"
+                                      required
+                                      min="1"
+                                      step="any"
+                                      value={paymentAmount}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setPaymentAmount(val);
+                                        const generated = buildPaymentUrl(paymentPhone, paymentHandle, payeeName, val, paymentNote);
+                                        setDestinationUrl(generated);
+                                      }}
+                                      placeholder="e.g. 500"
+                                      className={`w-full rounded-xl pl-11 pr-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500/45 transition placeholder-slate-500 border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Quick Amount Presets Column */}
+                                <div className="space-y-1">
+                                  <span className={`text-[11px] font-semibold uppercase tracking-wider ${activeTheme.secondaryText}`}>
+                                    Quick Money Presets:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {["50", "100", "200", "500", "1000", "2000", "5000"].map((amt) => (
+                                      <button
+                                        key={amt}
+                                        type="button"
+                                        onClick={() => {
+                                          setPaymentAmount(amt);
+                                          const generated = buildPaymentUrl(paymentPhone, paymentHandle, payeeName, amt, paymentNote);
+                                          setDestinationUrl(generated);
+                                        }}
+                                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition border ${
+                                          paymentAmount === amt
+                                            ? "bg-emerald-600 text-white border-emerald-500 shadow-sm"
+                                            : activeTheme.isDark
+                                              ? "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800 text-emerald-400"
+                                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100 text-emerald-600"
+                                        }`}
+                                      >
+                                        ₹{amt}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className={`text-xs p-2.5 rounded-lg border ${
+                                activeTheme.isDark ? 'bg-slate-900/80 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                              }`}>
+                                🔓 Scanners will be allowed to enter any custom money amount in their payment app.
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Payee / Receiver Name & Note */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            <div className="space-y-1.5">
+                              <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>
+                                Payee / Business Name (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={payeeName}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setPayeeName(val);
+                                  const generated = buildPaymentUrl(paymentPhone, paymentHandle, val, paymentAmount, paymentNote);
+                                  setDestinationUrl(generated);
+                                }}
+                                placeholder="e.g. RANBIDGE Solutions"
+                                className={`w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/45 transition placeholder-slate-500 border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                              />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>
+                                Payment Note / Remark (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentNote}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setPaymentNote(val);
+                                  const generated = buildPaymentUrl(paymentPhone, paymentHandle, payeeName, paymentAmount, val);
+                                  setDestinationUrl(generated);
+                                }}
+                                placeholder="e.g. Invoice #104 payment"
+                                className={`w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/45 transition placeholder-slate-500 border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Generated Payment URI Preview */}
+                          {destinationUrl && (
+                            <div className={`p-3 rounded-xl border text-xs font-mono break-all ${
+                              activeTheme.isDark ? 'bg-slate-950 border-slate-800 text-indigo-300' : 'bg-white border-slate-200 text-indigo-600'
+                            }`}>
+                              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Generated Payment Link String:</span>
+                              {destinationUrl}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Phone Mode */}
+                      {qrType === "phone" && (
+                        <div className={`space-y-4 p-4 sm:p-5 rounded-xl border transition-all duration-300 ${
+                          activeTheme.isDark ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-indigo-50/50 border-indigo-200'
+                        }`}>
+                          <div className="flex items-center justify-between border-b pb-3 border-indigo-500/20">
+                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wide flex items-center gap-1.5">
+                              <Phone className="w-4 h-4" /> Phone Action Configurator
+                            </span>
+                          </div>
+
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+                              <input
+                                type="radio"
+                                name="phoneCallType"
+                                checked={phoneCallType === "call"}
+                                onChange={() => {
+                                  setPhoneCallType("call");
+                                  const generated = buildPhoneUrl(phoneNumberInput, "call");
+                                  setDestinationUrl(generated);
+                                }}
+                                className="text-indigo-600 focus:ring-indigo-500"
+                              />
+                              <span>Direct Phone Call (tel:)</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer">
+                              <input
+                                type="radio"
+                                name="phoneCallType"
+                                checked={phoneCallType === "sms"}
+                                onChange={() => {
+                                  setPhoneCallType("sms");
+                                  const generated = buildPhoneUrl(phoneNumberInput, "sms");
+                                  setDestinationUrl(generated);
+                                }}
+                                className="text-indigo-600 focus:ring-indigo-500"
+                              />
+                              <span>SMS Message (smsto:)</span>
+                            </label>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <label className={`text-xs font-semibold uppercase tracking-wider ${activeTheme.text}`}>
+                              Phone Number <span className="text-red-400">*</span>
+                            </label>
+                            <div className="relative">
+                              <Phone className={`absolute left-4 top-3.5 w-4 h-4 ${activeTheme.secondaryText}`} />
+                              <input
+                                type="tel"
+                                required
+                                value={phoneNumberInput}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setPhoneNumberInput(val);
+                                  const generated = buildPhoneUrl(val, phoneCallType);
+                                  setDestinationUrl(generated);
+                                }}
+                                placeholder="e.g. +919876543210 or 9876543210"
+                                className={`w-full rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/45 transition placeholder-slate-500 font-mono border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                              />
+                            </div>
+                          </div>
+
+                          {destinationUrl && (
+                            <div className={`p-3 rounded-xl border text-xs font-mono break-all ${
+                              activeTheme.isDark ? 'bg-slate-950 border-slate-800 text-indigo-300' : 'bg-white border-slate-200 text-indigo-600'
+                            }`}>
+                              <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Generated Target URI:</span>
+                              {destinationUrl}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="space-y-1.5">
                         <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${activeTheme.text}`}>Optional center Logo (PNG/JPG)</label>
@@ -1571,9 +2240,21 @@ export default function App() {
                                   {/* Header & Status Indicator */}
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="space-y-1">
-                                      <h4 className={`font-display font-bold text-md tracking-tight leading-tight transition-colors duration-300 ${activeTheme.headingText}`}>
-                                        {link.name}
-                                      </h4>
+                                      <div className="flex items-center gap-2">
+                                        <h4 className={`font-display font-bold text-md tracking-tight leading-tight transition-colors duration-300 ${activeTheme.headingText}`}>
+                                          {link.name}
+                                        </h4>
+                                        {link.destinationUrl.startsWith("upi://") && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                            <CreditCard className="w-3 h-3" /> UPI Payment
+                                          </span>
+                                        )}
+                                        {(link.destinationUrl.startsWith("tel:") || link.destinationUrl.startsWith("smsto:")) && (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                            <Phone className="w-3 h-3" /> Phone/SMS
+                                          </span>
+                                        )}
+                                      </div>
                                       <p className={`text-[11px] font-medium transition-colors duration-300 ${activeTheme.secondaryText}`}>
                                         Generated {new Date(link.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                                       </p>
@@ -1647,6 +2328,29 @@ export default function App() {
                                             setEditName(link.name);
                                             setEditTags(link.tags || []);
                                             setEditTagInput("");
+                                            if (link.destinationUrl.startsWith("upi://pay")) {
+                                              setEditQrType("payment");
+                                              try {
+                                                const u = new URL(link.destinationUrl);
+                                                const pa = u.searchParams.get("pa") || "";
+                                                const pn = u.searchParams.get("pn") || "";
+                                                const am = u.searchParams.get("am") || "";
+                                                const tn = u.searchParams.get("tn") || "";
+                                                setEditPaymentPhone(pa);
+                                                setEditPayeeName(pn);
+                                                setEditPaymentAmount(am);
+                                                setEditPaymentNote(tn);
+                                              } catch (e) {
+                                                setEditPaymentPhone("");
+                                              }
+                                            } else if (link.destinationUrl.startsWith("tel:") || link.destinationUrl.startsWith("smsto:")) {
+                                              setEditQrType("phone");
+                                              const isSms = link.destinationUrl.startsWith("smsto:");
+                                              setEditPhoneCallType(isSms ? "sms" : "call");
+                                              setEditPhoneNumberInput(link.destinationUrl.replace(/^(tel:|smsto:)/i, ""));
+                                            } else {
+                                              setEditQrType("url");
+                                            }
                                           }}
                                           className={`p-1.5 rounded transition-colors shrink-0 ${
                                             activeTheme.isDark ? 'hover:bg-slate-800 text-indigo-400 hover:text-indigo-300' : 'hover:bg-slate-200 text-indigo-600 hover:text-indigo-700'
@@ -1657,6 +2361,34 @@ export default function App() {
                                         </button>
                                       </div>
                                     </div>
+
+                                    {/* Dedicated Payment Money Column / Row */}
+                                    {(() => {
+                                      const payDetail = getPaymentMoneyDetail(link.destinationUrl);
+                                      if (!payDetail) return null;
+                                      return (
+                                        <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs font-mono transition-all duration-300 ${
+                                          activeTheme.isDark ? 'bg-indigo-950/40 border-indigo-500/30' : 'bg-indigo-50/70 border-indigo-200'
+                                        }`}>
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            <IndianRupee className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                            <span className={`text-[10px] uppercase font-bold tracking-wider ${activeTheme.secondaryText}`}>Payment Money:</span>
+                                            {payDetail.isFixed ? (
+                                              <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 flex items-center gap-1 text-[11px] truncate">
+                                                <Lock className="w-3 h-3" /> Fixed ₹{payDetail.amount}
+                                              </span>
+                                            ) : (
+                                              <span className="font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 flex items-center gap-1 text-[11px] truncate">
+                                                <Unlock className="w-3 h-3" /> Flexible (Open Amount)
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span className={`text-[10px] font-mono truncate max-w-[110px] ${activeTheme.secondaryText}`} title={payDetail.vpa}>
+                                            {payDetail.vpa}
+                                          </span>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                 </div>
                               </div>
@@ -1863,19 +2595,365 @@ export default function App() {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${activeTheme.text}`}>New Target Destination URL</label>
-                  <input
-                    type="url"
-                    required
-                    value={editUrl}
-                    onChange={(e) => setEditUrl(e.target.value)}
-                    className={`w-full rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
-                  />
-                  <p className={`text-[11px] mt-1 transition-colors duration-300 ${activeTheme.secondaryText}`}>
-                    Once saved, scans of this printed QR code will immediately redirect to the new URL destination without any latency!
-                  </p>
+                {/* Edit Target Type Selector */}
+                <div className="space-y-1.5">
+                  <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${activeTheme.text}`}>
+                    Target Type
+                  </label>
+                  <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-xl border transition-all duration-300 ${
+                    activeTheme.isDark ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100 border-slate-200'
+                  }`}>
+                    <button
+                      type="button"
+                      onClick={() => setEditQrType("url")}
+                      className={`flex items-center justify-center gap-1 py-2 px-2 rounded-lg text-xs font-bold transition-all ${
+                        editQrType === "url"
+                          ? "bg-indigo-600 text-white shadow"
+                          : `${activeTheme.secondaryText} hover:text-white`
+                      }`}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>Web URL</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditQrType("payment")}
+                      className={`flex items-center justify-center gap-1 py-2 px-2 rounded-lg text-xs font-bold transition-all ${
+                        editQrType === "payment"
+                          ? "bg-indigo-600 text-white shadow"
+                          : `${activeTheme.secondaryText} hover:text-white`
+                      }`}
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>Payment</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditQrType("phone")}
+                      className={`flex items-center justify-center gap-1 py-2 px-2 rounded-lg text-xs font-bold transition-all ${
+                        editQrType === "phone"
+                          ? "bg-indigo-600 text-white shadow"
+                          : `${activeTheme.secondaryText} hover:text-white`
+                      }`}
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Phone/SMS</span>
+                    </button>
+                  </div>
                 </div>
+
+                {editQrType === "url" && (
+                  <div className="space-y-1">
+                    <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${activeTheme.text}`}>New Target Destination URL</label>
+                    <input
+                      type="text"
+                      required
+                      value={editUrl}
+                      onChange={(e) => setEditUrl(e.target.value)}
+                      className={`w-full rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                    />
+                  </div>
+                )}
+
+                {editQrType === "payment" && (
+                  <div className={`space-y-3 p-3.5 rounded-xl border text-xs ${
+                    activeTheme.isDark ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-indigo-50/50 border-indigo-200'
+                  }`}>
+                    <div className="flex items-center justify-between border-b pb-2 border-indigo-500/20">
+                      <span className="font-bold text-indigo-400 uppercase tracking-wide flex items-center gap-1">
+                        <CreditCard className="w-3.5 h-3.5" /> Payment / UPI Settings
+                      </span>
+                    </div>
+
+                    {/* Sub-mode selector */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditPaymentTargetMode("vpa");
+                          setEditUrl(buildPaymentUrl(editPaymentPhone, editPaymentHandle, editPayeeName, editPaymentAmount, editPaymentNote));
+                        }}
+                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-bold transition border ${
+                          editPaymentTargetMode === "vpa"
+                            ? "bg-indigo-600 text-white border-indigo-500"
+                            : "bg-slate-800 text-slate-300 border-slate-700"
+                        }`}
+                      >
+                        <Phone className="w-3 h-3" />
+                        <span>Phone / VPA</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditPaymentTargetMode("bank");
+                          setEditUrl(buildBankAccountPaymentUrl(editBankAccNo, editBankIfscCode, editPayeeName, editPaymentAmount, editPaymentNote));
+                        }}
+                        className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-bold transition border ${
+                          editPaymentTargetMode === "bank"
+                            ? "bg-indigo-600 text-white border-indigo-500"
+                            : "bg-slate-800 text-slate-300 border-slate-700"
+                        }`}
+                      >
+                        <Landmark className="w-3 h-3" />
+                        <span>Bank Acc + IFSC</span>
+                      </button>
+                    </div>
+
+                    {editPaymentTargetMode === "vpa" ? (
+                      <>
+                        <div className="space-y-1">
+                          <label className={`text-[11px] font-semibold uppercase ${activeTheme.text}`}>Phone Number / UPI ID *</label>
+                          <input
+                            type="text"
+                            required
+                            value={editPaymentPhone}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditPaymentPhone(val);
+                              setEditUrl(buildPaymentUrl(val, editPaymentHandle, editPayeeName, editPaymentAmount, editPaymentNote));
+                            }}
+                            placeholder="9876543210 or user@upi"
+                            className={`w-full rounded-xl px-3 py-2 text-xs font-mono border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                          />
+                        </div>
+
+                        {!editPaymentPhone.includes("@") && (
+                          <div className="flex flex-wrap gap-1">
+                            {["@upi", "@paytm", "@ybl", "@okaxis", "@sbi"].map((h) => (
+                              <button
+                                key={h}
+                                type="button"
+                                onClick={() => {
+                                  setEditPaymentHandle(h);
+                                  setEditUrl(buildPaymentUrl(editPaymentPhone, h, editPayeeName, editPaymentAmount, editPaymentNote));
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                                  editPaymentHandle === h ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-300"
+                                }`}
+                              >
+                                {h}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => setEditPaymentTargetMode("bank")}
+                              className="px-2 py-0.5 rounded text-[10px] font-mono border bg-amber-500/10 text-amber-400 border-amber-500/30 flex items-center gap-1"
+                            >
+                              <Landmark className="w-3 h-3" /> Bank Acc
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="space-y-2 p-2.5 rounded-lg border bg-slate-900/40 border-slate-800">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className={`text-[10px] uppercase font-semibold ${activeTheme.text}`}>Account No *</label>
+                            <input
+                              type="text"
+                              required
+                              value={editBankAccNo}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditBankAccNo(val);
+                                setEditUrl(buildBankAccountPaymentUrl(val, editBankIfscCode, editPayeeName, editPaymentAmount, editPaymentNote));
+                              }}
+                              placeholder="1234567890"
+                              className={`w-full rounded-lg px-2.5 py-1.5 text-xs font-mono border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                            />
+                          </div>
+
+                          <div>
+                            <label className={`text-[10px] uppercase font-semibold ${activeTheme.text}`}>IFSC Code *</label>
+                            <input
+                              type="text"
+                              required
+                              value={editBankIfscCode}
+                              onChange={(e) => {
+                                const val = e.target.value.toUpperCase();
+                                setEditBankIfscCode(val);
+                                setEditUrl(buildBankAccountPaymentUrl(editBankAccNo, val, editPayeeName, editPaymentAmount, editPaymentNote));
+                              }}
+                              placeholder="SBIN0001234"
+                              className={`w-full rounded-lg px-2.5 py-1.5 text-xs font-mono uppercase border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Money Amount Setting Column */}
+                    <div className="space-y-2 pt-2 border-t border-indigo-500/20">
+                      <div className="flex items-center justify-between">
+                        <label className={`text-[11px] font-semibold uppercase ${activeTheme.text}`}>Fix Money Amount in QR</label>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditAmountMode("fixed");
+                            const defaultAmt = editPaymentAmount || "500";
+                            setEditPaymentAmount(defaultAmt);
+                            setEditUrl(buildPaymentUrl(editPaymentPhone, editPaymentHandle, editPayeeName, defaultAmt, editPaymentNote));
+                          }}
+                          className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-bold transition border ${
+                            editAmountMode === "fixed"
+                              ? "bg-emerald-600 text-white border-emerald-500"
+                              : "bg-slate-800 text-slate-300 border-slate-700"
+                          }`}
+                        >
+                          <Lock className="w-3 h-3" />
+                          <span>Fixed Money</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditAmountMode("flexible");
+                            setEditPaymentAmount("");
+                            setEditUrl(buildPaymentUrl(editPaymentPhone, editPaymentHandle, editPayeeName, "", editPaymentNote));
+                          }}
+                          className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-bold transition border ${
+                            editAmountMode === "flexible"
+                              ? "bg-indigo-600 text-white border-indigo-500"
+                              : "bg-slate-800 text-slate-300 border-slate-700"
+                          }`}
+                        >
+                          <Unlock className="w-3 h-3" />
+                          <span>Flexible</span>
+                        </button>
+                      </div>
+
+                      {editAmountMode === "fixed" && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="relative">
+                            <IndianRupee className={`absolute left-3 top-2.5 w-3.5 h-3.5 ${activeTheme.secondaryText}`} />
+                            <input
+                              type="number"
+                              required
+                              min="1"
+                              value={editPaymentAmount}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditPaymentAmount(val);
+                                setEditUrl(buildPaymentUrl(editPaymentPhone, editPaymentHandle, editPayeeName, val, editPaymentNote));
+                              }}
+                              placeholder="500"
+                              className={`w-full rounded-xl pl-9 pr-3 py-1.5 text-xs font-mono border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap gap-1">
+                            {["50", "100", "200", "500", "1000", "2000", "5000"].map((amt) => (
+                              <button
+                                key={amt}
+                                type="button"
+                                onClick={() => {
+                                  setEditPaymentAmount(amt);
+                                  setEditUrl(buildPaymentUrl(editPaymentPhone, editPaymentHandle, editPayeeName, amt, editPaymentNote));
+                                }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition border ${
+                                  editPaymentAmount === amt
+                                    ? "bg-emerald-600 text-white border-emerald-500"
+                                    : "bg-slate-900 text-emerald-400 border-slate-800"
+                                }`}
+                              >
+                                ₹{amt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className={`text-[10px] uppercase font-semibold ${activeTheme.text}`}>Payee Name</label>
+                        <input
+                          type="text"
+                          value={editPayeeName}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditPayeeName(val);
+                            setEditUrl(buildPaymentUrl(editPaymentPhone, editPaymentHandle, val, editPaymentAmount, editPaymentNote));
+                          }}
+                          placeholder="Store Name"
+                          className={`w-full rounded-lg px-2.5 py-1.5 text-xs border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                        />
+                      </div>
+                      <div>
+                        <label className={`text-[10px] uppercase font-semibold ${activeTheme.text}`}>Note</label>
+                        <input
+                          type="text"
+                          value={editPaymentNote}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditPaymentNote(val);
+                            setEditUrl(buildPaymentUrl(editPaymentPhone, editPaymentHandle, editPayeeName, editPaymentAmount, val));
+                          }}
+                          placeholder="Invoice #104"
+                          className={`w-full rounded-lg px-2.5 py-1.5 text-xs border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                        />
+                      </div>
+                    </div>
+
+                    {editUrl && (
+                      <div className="p-2 rounded bg-slate-900 text-[10px] font-mono text-indigo-300 break-all">
+                        {editUrl}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {editQrType === "phone" && (
+                  <div className={`space-y-3 p-3.5 rounded-xl border text-xs ${
+                    activeTheme.isDark ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-indigo-50/50 border-indigo-200'
+                  }`}>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="editPhoneCallType"
+                          checked={editPhoneCallType === "call"}
+                          onChange={() => {
+                            setEditPhoneCallType("call");
+                            setEditUrl(buildPhoneUrl(editPhoneNumberInput, "call"));
+                          }}
+                        />
+                        <span>Call (tel:)</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="editPhoneCallType"
+                          checked={editPhoneCallType === "sms"}
+                          onChange={() => {
+                            setEditPhoneCallType("sms");
+                            setEditUrl(buildPhoneUrl(editPhoneNumberInput, "sms"));
+                          }}
+                        />
+                        <span>SMS (smsto:)</span>
+                      </label>
+                    </div>
+                    <input
+                      type="tel"
+                      required
+                      value={editPhoneNumberInput}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditPhoneNumberInput(val);
+                        setEditUrl(buildPhoneUrl(val, editPhoneCallType));
+                      }}
+                      placeholder="+919876543210"
+                      className={`w-full rounded-xl px-3 py-2 text-xs font-mono border ${activeTheme.inputBg} ${activeTheme.cardBorder} ${activeTheme.headingText}`}
+                    />
+                    {editUrl && (
+                      <div className="p-2 rounded bg-slate-900 text-[10px] font-mono text-indigo-300 break-all">
+                        {editUrl}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-1">
                   <label className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${activeTheme.text}`}>Optional center Logo (PNG/JPG)</label>
