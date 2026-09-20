@@ -34,6 +34,7 @@ import AnalyticsView from "./components/AnalyticsView";
 import QRPreview from "./components/QRPreview";
 import LandingPage from "./components/LandingPage";
 import AuthModal from "./components/AuthModal";
+import DocumentConverterModal, { ConversionMode } from "./components/DocumentConverterModal";
 import {
   User as UserIcon,
   LogOut,
@@ -292,6 +293,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "create">("dashboard");
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "signup" | "pin">("login");
+  const [docConverterOpen, setDocConverterOpen] = useState(false);
+  const [docConverterMode, setDocConverterMode] = useState<ConversionMode>("docx2pdf");
+
+  const openDocConverter = (mode: ConversionMode = "docx2pdf") => {
+    setDocConverterMode(mode);
+    setDocConverterOpen(true);
+  };
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -1203,6 +1211,20 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Doc Converter Quick Access Button */}
+              <button
+                onClick={() => openDocConverter("docx2pdf")}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition ${
+                  activeTheme.isDark
+                    ? "bg-slate-900/80 border-indigo-500/40 text-indigo-300 hover:bg-slate-800 hover:text-white"
+                    : "bg-white border-indigo-200 text-indigo-600 hover:bg-slate-50"
+                }`}
+                title="Open Document & Image Converter Studio"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Doc Converter</span>
+              </button>
+
               {/* PIN Button at original position */}
               <button
                 onClick={() => openAuth("pin")}
@@ -1250,6 +1272,7 @@ export default function App() {
           <LandingPage
             onOpenDashboard={() => setCurrentView("studio")}
             onOpenAuth={openAuth}
+            onOpenConverter={openDocConverter}
             activeTheme={activeTheme}
           />
         ) : selectedAnalyticsId ? (
@@ -1283,6 +1306,18 @@ export default function App() {
               {/* Header Actions */}
               <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openDocConverter("docx2pdf")}
+                    className={`px-3 py-2 border rounded-xl transition flex items-center gap-1.5 ${
+                      activeTheme.isDark
+                        ? "bg-slate-900/60 border-indigo-500/40 text-indigo-300 hover:text-white hover:bg-slate-800/60"
+                        : "bg-white border-indigo-200 text-indigo-600 hover:text-indigo-800 hover:bg-slate-50"
+                    }`}
+                    title="Open Document & Image Converter Studio"
+                  >
+                    <RefreshCw className="w-4 h-4 text-indigo-400" />
+                    <span className="hidden xs:inline text-xs font-semibold">Doc Converter</span>
+                  </button>
                   <button
                     onClick={handleExportDB}
                     className={`px-3 py-2 border rounded-xl transition flex items-center gap-1.5 ${
@@ -3231,6 +3266,15 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Document & File Converter Modal */}
+      <DocumentConverterModal
+        isOpen={docConverterOpen}
+        onClose={() => setDocConverterOpen(false)}
+        initialMode={docConverterMode}
+        activeTheme={activeTheme}
+        onSuccessToast={(msg) => showToast(msg)}
+      />
     </div>
   );
 }

@@ -23,15 +23,19 @@ import {
 import { ThemeConfig } from "../types";
 import QRPreview from "./QRPreview";
 
+import { ConversionMode } from "./DocumentConverterModal";
+
 interface LandingPageProps {
   onOpenDashboard: () => void;
   onOpenAuth: (mode?: "login" | "signup" | "pin") => void;
+  onOpenConverter?: (mode?: ConversionMode) => void;
   activeTheme: ThemeConfig;
 }
 
 export default function LandingPage({
   onOpenDashboard,
   onOpenAuth,
+  onOpenConverter,
   activeTheme,
 }: LandingPageProps) {
   const [demoType, setDemoType] = useState<"url" | "payment">("url");
@@ -398,6 +402,81 @@ export default function LandingPage({
               <p className={`text-xs sm:text-sm ${activeTheme.secondaryText} leading-relaxed`}>{step.description}</p>
             </motion.div>
           ))}
+        </div>
+      </section>
+
+      {/* --- DOCUMENT & FILE CONVERTER SECTION --- */}
+      <section className="max-w-5xl mx-auto px-4 space-y-8">
+        <div className="text-center space-y-3">
+          <span className="text-xs font-mono uppercase tracking-widest text-indigo-400 font-semibold">Client-Side File Utilities</span>
+          <h2 className={`text-3xl sm:text-4xl font-display font-bold ${activeTheme.headingText}`}>
+            Instant Document & Image Converters
+          </h2>
+          <p className={`text-xs sm:text-sm ${activeTheme.secondaryText} max-w-xl mx-auto`}>
+            Convert documents and images 100% locally in your browser with privacy, zero upload wait time, and high resolution output.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* DOCX to PDF Card */}
+          <div className={`p-6 rounded-3xl border space-y-4 transition-all hover:scale-[1.02] ${activeTheme.cardBg} ${activeTheme.cardBorder}`}>
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 w-fit">
+              <Download className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className={`text-lg font-bold ${activeTheme.headingText}`}>DOCX ➔ PDF</h3>
+              <p className={`text-xs ${activeTheme.secondaryText} mt-1 leading-relaxed`}>
+                Convert Microsoft Word documents (.docx) into styled, printable PDF files instantly.
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenConverter && onOpenConverter("docx2pdf")}
+              className="w-full py-3 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2 group"
+            >
+              <span>Convert DOCX to PDF</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+
+          {/* PDF to DOCX Card */}
+          <div className={`p-6 rounded-3xl border space-y-4 transition-all hover:scale-[1.02] ${activeTheme.cardBg} ${activeTheme.cardBorder}`}>
+            <div className="p-3.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 w-fit">
+              <Repeat className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className={`text-lg font-bold ${activeTheme.headingText}`}>PDF ➔ DOCX</h3>
+              <p className={`text-xs ${activeTheme.secondaryText} mt-1 leading-relaxed`}>
+                Extract structured text and paragraphs from PDF files into editable Word documents.
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenConverter && onOpenConverter("pdf2docx")}
+              className="w-full py-3 bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/30 text-indigo-300 font-bold rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2 group"
+            >
+              <span>Convert PDF to DOCX</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+
+          {/* PDF to PNG / JPEG Card */}
+          <div className={`p-6 rounded-3xl border space-y-4 transition-all hover:scale-[1.02] ${activeTheme.cardBg} ${activeTheme.cardBorder}`}>
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className={`text-lg font-bold ${activeTheme.headingText}`}>PDF ➔ PNG / JPEG</h3>
+              <p className={`text-xs ${activeTheme.secondaryText} mt-1 leading-relaxed`}>
+                Render PDF pages into HD images (300+ DPI) with batch page download support.
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenConverter && onOpenConverter("pdf2img")}
+              className="w-full py-3 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-bold rounded-2xl text-xs sm:text-sm transition flex items-center justify-center gap-2 group"
+            >
+              <span>Convert PDF to Images</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
       </section>
 
